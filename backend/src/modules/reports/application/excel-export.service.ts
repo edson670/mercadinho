@@ -20,7 +20,7 @@ export class ExcelExportService {
 
     const headerRow = sheet.getRow(1);
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF16A34A' } };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A5CAD' } };
 
     for (const row of report.rows) {
       sheet.addRow(row);

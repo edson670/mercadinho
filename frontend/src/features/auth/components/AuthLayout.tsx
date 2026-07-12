@@ -44,7 +44,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
         />
 
         <div className="relative z-10 flex max-w-sm flex-col items-center text-center">
-          <div className="mb-6 flex h-28 w-28 items-center justify-center overflow-hidden rounded-2xl bg-white/95 shadow-xl">
+          <div className="mb-6 flex h-28 w-28 items-center justify-center overflow-hidden rounded-2xl bg-white/95 shadow-xl ring-4 ring-brand-gold/60">
             {logoUrl ? (
               <img src={logoUrl} alt={nome} className="h-full w-full object-contain p-3" />
             ) : (
@@ -52,6 +52,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
             )}
           </div>
           <h1 className="text-3xl font-bold tracking-tight">{nome}</h1>
+          <div className="mt-2 h-1 w-12 rounded-full bg-brand-gold" />
           <p className="mt-3 text-sm leading-relaxed text-primary-foreground/85">
             Gestão completa do seu mercadinho: vendas, estoque, fiado, caixa e relatórios em um
             só lugar.

@@ -41,7 +41,7 @@ export class PdfExportService {
             ],
           },
           layout: {
-            fillColor: (rowIndex: number) => (rowIndex === 0 ? '#16a34a' : rowIndex % 2 === 0 ? '#f8fafc' : null),
+            fillColor: (rowIndex: number) => (rowIndex === 0 ? '#1a5cad' : rowIndex % 2 === 0 ? '#f8fafc' : null),
             hLineColor: () => '#e2e8f0',
             vLineColor: () => '#e2e8f0',
           },
