@@ -1,4 +1,4 @@
-import { plainToInstance } from 'class-transformer';
+import { plainToInstance, Type } from 'class-transformer';
 import {
   IsEnum,
   IsNumber,
@@ -23,8 +23,9 @@ class EnvironmentVariables {
   NODE_ENV: NodeEnv = NodeEnv.Development;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
-  PORT = 3000;
+  PORT: number = 3000;
 
   @IsString()
   DATABASE_URL!: string;
