@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mercado_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mercado
+      POSTGRES_PASSWORD: mercado
+      POSTGRES_DB: mercado
+    ports:
+      - "5432:5432"
+    volumes:
+      - mercado_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mercado -d mercado"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # pgAdmin opcional para inspeção do banco em dev
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: mercado_pgadmin
+    restart: unless-stopped
+    profiles: ["tools"]
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@mercado.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+
+volumes:
+  mercado_pgdata:
