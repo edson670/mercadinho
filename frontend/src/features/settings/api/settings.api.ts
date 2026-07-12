@@ -17,8 +17,19 @@ export interface UpdateSettingsPayload {
   telefone?: string;
 }
 
+export interface Branding {
+  nome: string;
+  logoUrl: string | null;
+}
+
 export async function getSettings(): Promise<CompanySettings> {
   const { data } = await apiClient.get('/settings');
+  return data;
+}
+
+/** Endpoint público (sem autenticação) — usado nas telas de login/recuperação de senha. */
+export async function getBranding(): Promise<Branding> {
+  const { data } = await apiClient.get('/settings/branding');
   return data;
 }
 

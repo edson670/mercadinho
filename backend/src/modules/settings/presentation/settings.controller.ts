@@ -15,6 +15,7 @@ import { randomUUID } from 'node:crypto';
 import { extname, join } from 'node:path';
 import { existsSync, mkdirSync } from 'node:fs';
 import { Role } from '@prisma/client';
+import { Public } from '@core/auth/public.decorator';
 import { Roles } from '@core/auth/roles.decorator';
 import { SettingsService } from '../application/settings.service';
 import { UpdateSettingsDto } from './dto/settings.dto';
@@ -28,11 +29,20 @@ const ALLOWED_MIME = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/sv
 export class SettingsController {
   constructor(private readonly service: SettingsService) {}
 
-  // Leitura liberada a todos os perfis (nome/logo aparecem na UI).
+  // Leitura completa liberada a todos os perfis autenticados.
   @Get()
   @ApiOperation({ summary: 'Dados da empresa' })
   get() {
     return this.service.get();
+  }
+
+  // Pública e minimalista: só nome/logo, usados na tela de login antes de autenticar.
+  @Public()
+  @Get('branding')
+  @ApiOperation({ summary: 'Nome e logotipo da empresa (público, para telas de login)' })
+  async branding() {
+    const { nome, logoUrl } = await this.service.get();
+    return { nome, logoUrl };
   }
 
   @Patch()

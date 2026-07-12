@@ -7,11 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { getApiErrorMessage } from '@/lib/api-client';
 import { toast } from '@/stores/toast.store';
 import { resetPassword } from '../api/auth.api';
 import { resetSchema, type ResetForm } from '../schemas/auth.schema';
+import { AuthLayout } from '../components/AuthLayout';
 
 export function ResetPasswordPage() {
   const [params] = useSearchParams();
@@ -36,11 +36,8 @@ export function ResetPasswordPage() {
   });
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <div className="absolute right-4 top-4">
-        <ThemeToggle />
-      </div>
-      <Card className="w-full max-w-sm">
+    <AuthLayout>
+      <Card className="w-full max-w-sm shadow-lg">
         <CardHeader className="items-center text-center">
           <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <KeyRound className="h-7 w-7" />
@@ -84,6 +81,6 @@ export function ResetPasswordPage() {
           </form>
         </CardContent>
       </Card>
-    </div>
+    </AuthLayout>
   );
 }
