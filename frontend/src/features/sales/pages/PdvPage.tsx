@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Trash2,
@@ -31,12 +31,23 @@ import type { Customer } from '@/features/customers/api/customers.api';
 import type { FormaPagamento } from '../api/sales.api';
 import { useCreateSale } from '../api/use-sales';
 
-const paymentOptions: { value: FormaPagamento; label: string; icon: typeof Banknote }[] = [
-  { value: 'DINHEIRO', label: 'Dinheiro', icon: Banknote },
-  { value: 'PIX', label: 'PIX', icon: QrCode },
-  { value: 'CARTAO', label: 'Cartão', icon: CreditCard },
-  { value: 'FIADO', label: 'Fiado', icon: HandCoins },
+const paymentOptions: { value: FormaPagamento; label: string; icon: typeof Banknote; atalho: string }[] = [
+  { value: 'DINHEIRO', label: 'Dinheiro', icon: Banknote, atalho: 'Shift+2' },
+  { value: 'PIX', label: 'PIX', icon: QrCode, atalho: 'Shift+3' },
+  { value: 'CARTAO', label: 'Cartão', icon: CreditCard, atalho: 'Shift+1' },
+  { value: 'FIADO', label: 'Fiado', icon: HandCoins, atalho: 'Shift+4' },
 ];
+
+/**
+ * `event.code` do dígito (não muda com Shift, ao contrário de `event.key` —
+ * que vira "!", "@" etc.) → forma de pagamento correspondente.
+ */
+const ATALHO_PAGAMENTO: Record<string, FormaPagamento> = {
+  Digit1: 'CARTAO',
+  Digit2: 'DINHEIRO',
+  Digit3: 'PIX',
+  Digit4: 'FIADO',
+};
 
 export function PdvPage() {
   const navigate = useNavigate();
@@ -69,6 +80,25 @@ export function PdvPage() {
       setPagamento('DINHEIRO');
     }
   };
+
+  // Atalhos de teclado: Enter finaliza a venda, Shift+1..4 troca a forma de pagamento.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.shiftKey && ATALHO_PAGAMENTO[e.code]) {
+        e.preventDefault();
+        setPagamento(ATALHO_PAGAMENTO[e.code]);
+        return;
+      }
+      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+        if (document.activeElement instanceof HTMLTextAreaElement) return;
+        if (createSale.isPending || items.length === 0) return;
+        e.preventDefault();
+        handleFinalize();
+      }
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  });
 
   return (
     <div className="space-y-4">
@@ -226,19 +256,24 @@ export function PdvPage() {
               <div className="space-y-2">
                 <Label className="text-xs">Forma de pagamento</Label>
                 <div className="grid grid-cols-2 gap-2">
-                  {paymentOptions.map(({ value, label, icon: Icon }) => (
+                  {paymentOptions.map(({ value, label, icon: Icon, atalho }) => (
                     <button
                       key={value}
                       type="button"
                       onClick={() => setPagamento(value)}
                       className={cn(
-                        'flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors',
+                        'flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm transition-colors',
                         pagamento === value
                           ? 'border-primary bg-primary/10 text-primary'
                           : 'hover:bg-accent',
                       )}
                     >
-                      <Icon className="h-4 w-4" /> {label}
+                      <span className="flex items-center gap-2">
+                        <Icon className="h-4 w-4" /> {label}
+                      </span>
+                      <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                        {atalho}
+                      </kbd>
                     </button>
                   ))}
                 </div>
@@ -260,6 +295,9 @@ export function PdvPage() {
               >
                 {createSale.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                 Finalizar venda
+                <kbd className="rounded border border-primary-foreground/30 bg-primary-foreground/10 px-1.5 py-0.5 font-mono text-[10px]">
+                  Enter
+                </kbd>
               </Button>
               {items.length > 0 && (
                 <Button variant="ghost" className="w-full" onClick={clear}>
