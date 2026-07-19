@@ -7,6 +7,17 @@ import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { ForgotPasswordPage } from '@/features/auth/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/features/auth/pages/ResetPasswordPage';
 
+// Catálogo público (cliente final, sem autenticação) — carregado sob demanda.
+const CatalogPage = lazy(() =>
+  import('@/features/catalog/pages/CatalogPage').then((m) => ({ default: m.CatalogPage })),
+);
+const CheckoutPage = lazy(() =>
+  import('@/features/catalog/pages/CheckoutPage').then((m) => ({ default: m.CheckoutPage })),
+);
+const OrderTrackingPage = lazy(() =>
+  import('@/features/catalog/pages/OrderTrackingPage').then((m) => ({ default: m.OrderTrackingPage })),
+);
+
 // Páginas autenticadas carregadas sob demanda (code-splitting por rota) —
 // reduz o bundle inicial, que só precisa do login antes de qualquer navegação.
 const DashboardPage = lazy(() =>
@@ -61,6 +72,9 @@ export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/recuperar-senha', element: <ForgotPasswordPage /> },
   { path: '/redefinir-senha', element: <ResetPasswordPage /> },
+  { path: '/catalogo', element: lazyPage(CatalogPage) },
+  { path: '/catalogo/checkout', element: lazyPage(CheckoutPage) },
+  { path: '/catalogo/pedido/:trackingToken', element: lazyPage(OrderTrackingPage) },
   {
     element: <ProtectedRoute />,
     children: [
