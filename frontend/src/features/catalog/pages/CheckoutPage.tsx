@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { cn, formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency, generateId } from '@/lib/utils';
 import { getApiErrorMessage } from '@/lib/api-client';
 import { toast } from '@/stores/toast.store';
 import { useCartStore } from '../store/cart.store';
@@ -54,7 +54,7 @@ export function CheckoutPage() {
   const total = useCartStore((s) => s.total());
   const clearCart = useCartStore((s) => s.clear);
   const session = useCatalogSessionStore();
-  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const [idempotencyKey] = useState(() => generateId());
   const pedidoConfirmadoRef = useRef(false);
 
   useEffect(() => {
