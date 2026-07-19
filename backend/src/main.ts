@@ -3,13 +3,23 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import { json, urlencoded } from 'express';
 import { join } from 'node:path';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './core/errors/all-exceptions.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: false });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: false,
+    bodyParser: false,
+  });
   const config = app.get(ConfigService);
+
+  // Limite padrão do Express (100kb) é pequeno demais para os webhooks da
+  // Evolution API, que embutem contexto da mensagem (citação, metadados de
+  // mídia) e passam facilmente de 150-200kb mesmo em mensagens de texto simples.
+  app.use(json({ limit: '10mb' }));
+  app.use(urlencoded({ extended: true, limit: '10mb' }));
 
   // Arquivos enviados (ex.: logo da empresa) servidos em /uploads — fora do prefixo da API.
   app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' });
