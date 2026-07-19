@@ -7,6 +7,7 @@ import {
   Boxes,
   Truck,
   ShoppingCart,
+  MessageCircle,
   ScrollText,
   HandCoins,
   Wallet,
@@ -22,6 +23,8 @@ export interface NavItem {
   to: string;
   icon: LucideIcon;
   roles: Role[]; // perfis que enxergam o item
+  /** Mostra a contagem de pedidos WhatsApp ativos ao lado do item (ver Sidebar). */
+  liveOrdersBadge?: boolean;
 }
 
 const ALL: Role[] = ['ADMINISTRADOR', 'GERENTE', 'CAIXA'];
@@ -31,6 +34,13 @@ const ADMIN: Role[] = ['ADMINISTRADOR'];
 export const navItems: NavItem[] = [
   { label: 'Dashboard', to: '/', icon: LayoutDashboard, roles: ALL },
   { label: 'PDV / Vendas', to: '/vendas', icon: ShoppingCart, roles: ALL },
+  {
+    label: 'Pedidos WhatsApp',
+    to: '/pedidos-whatsapp',
+    icon: MessageCircle,
+    roles: ALL,
+    liveOrdersBadge: true,
+  },
   { label: 'Fiado', to: '/fiado', icon: HandCoins, roles: ALL },
   { label: 'Caixa', to: '/caixa', icon: Wallet, roles: ALL },
   { label: 'Clientes', to: '/clientes', icon: UserCircle, roles: ALL },

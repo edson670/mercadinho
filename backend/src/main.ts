@@ -17,9 +17,15 @@ async function bootstrap() {
   const apiPrefix = config.get<string>('API_PREFIX', 'api/v1');
   app.setGlobalPrefix(apiPrefix);
 
-  // CORS
+  // CORS — aceita uma lista separada por vírgula (ex.: localhost + IP da rede
+  // local, útil para testar o catálogo a partir do celular).
+  const corsOrigins = config
+    .get<string>('CORS_ORIGIN', 'http://localhost:5173')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
   app.enableCors({
-    origin: config.get<string>('CORS_ORIGIN', 'http://localhost:5173'),
+    origin: corsOrigins,
     credentials: true,
   });
 

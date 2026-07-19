@@ -4,7 +4,26 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useUIStore } from '@/stores/ui.store';
 import { useAuthStore } from '@/stores/auth.store';
+import { useActiveOrdersCount } from '@/features/orders/api/use-orders';
 import { visibleNavItems } from './navigation';
+
+/** Selo pulsante com a contagem de pedidos WhatsApp aguardando separação. */
+function LiveOrdersBadge({ collapsed }: { collapsed: boolean }) {
+  const { data: count } = useActiveOrdersCount();
+  if (!count) return null;
+
+  return (
+    <span
+      className={cn(
+        'relative flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[11px] font-bold text-destructive-foreground',
+        collapsed && 'absolute -right-1 -top-1 h-4 min-w-4 text-[9px] md:flex',
+      )}
+    >
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+      <span className="relative">{count > 9 ? '9+' : count}</span>
+    </span>
+  );
+}
 
 export function Sidebar() {
   const { sidebarCollapsed, toggleSidebar, mobileMenuOpen, closeMobileMenu } = useUIStore();
@@ -40,7 +59,7 @@ export function Sidebar() {
 
         {/* Navegação */}
         <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-          {items.map(({ label, to, icon: Icon }) => (
+          {items.map(({ label, to, icon: Icon, liveOrdersBadge }) => (
             <NavLink
               key={to}
               to={to}
@@ -48,7 +67,7 @@ export function Sidebar() {
               onClick={closeMobileMenu}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  'relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                   isActive
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
@@ -58,7 +77,8 @@ export function Sidebar() {
               title={sidebarCollapsed ? label : undefined}
             >
               <Icon className="h-5 w-5 shrink-0" />
-              <span className={cn(sidebarCollapsed && 'md:hidden')}>{label}</span>
+              <span className={cn('flex-1', sidebarCollapsed && 'md:hidden')}>{label}</span>
+              {liveOrdersBadge && <LiveOrdersBadge collapsed={Boolean(sidebarCollapsed)} />}
             </NavLink>
           ))}
         </nav>
