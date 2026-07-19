@@ -51,6 +51,9 @@ const CreditPage = lazy(() => import('@/features/credit/pages/CreditPage').then(
 const WhatsAppOrdersPage = lazy(() =>
   import('@/features/orders/pages/WhatsAppOrdersPage').then((m) => ({ default: m.WhatsAppOrdersPage })),
 );
+const OrderHistoryPage = lazy(() =>
+  import('@/features/orders/pages/OrderHistoryPage').then((m) => ({ default: m.OrderHistoryPage })),
+);
 const ReportsPage = lazy(() =>
   import('@/features/reports/pages/ReportsPage').then((m) => ({ default: m.ReportsPage })),
 );
@@ -85,6 +88,7 @@ export const router = createBrowserRouter([
           { path: '/vendas', element: lazyPage(PdvPage) },
           { path: '/vendas/historico', element: lazyPage(SalesHistoryPage) },
           { path: '/pedidos-whatsapp', element: lazyPage(WhatsAppOrdersPage) },
+          { path: '/pedidos-whatsapp/historico', element: lazyPage(OrderHistoryPage) },
           { path: '/fiado', element: lazyPage(CreditPage) },
           { path: '/caixa', element: lazyPage(CashRegisterPage) },
           { path: '/clientes', element: lazyPage(CustomersPage) },

@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Loader2, MessageCircle, Clock, Package, Truck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { History, Loader2, MessageCircle, Clock, Package, Truck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { cn, formatCurrency, formatDateTime } from '@/lib/utils';
@@ -22,6 +24,7 @@ const COLUNAS: ColumnConfig[] = [
 ];
 
 export function WhatsAppOrdersPage() {
+  const navigate = useNavigate();
   const [detailId, setDetailId] = useState<string | null>(null);
 
   return (
@@ -29,6 +32,11 @@ export function WhatsAppOrdersPage() {
       <PageHeader
         title="Pedidos WhatsApp"
         description="Pedidos recebidos pelo catálogo — atualiza automaticamente"
+        action={
+          <Button variant="outline" onClick={() => navigate('/pedidos-whatsapp/historico')}>
+            <History className="h-4 w-4" /> Histórico
+          </Button>
+        }
       />
 
       <div className="grid gap-4 lg:grid-cols-3">

@@ -24,6 +24,11 @@ export function useOrders(params: OrderListParams) {
   });
 }
 
+/** Histórico (sem polling — lista estática, diferente do quadro Kanban ao vivo). */
+export function useOrdersHistory(params: OrderListParams) {
+  return useQuery({ queryKey: [KEY, 'historico', params], queryFn: () => listOrders(params) });
+}
+
 export function useOrder(id: string | null) {
   return useQuery({
     queryKey: [KEY, 'detail', id],
