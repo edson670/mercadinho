@@ -20,6 +20,23 @@ export class CreateProductDto {
   @MinLength(2)
   nome!: string;
 
+  @ApiPropertyOptional({ example: 'Garrafa 2 litros, gelada' })
+  @IsOptional()
+  @IsString()
+  descricao?: string;
+
+  @ApiPropertyOptional({ description: 'URL da imagem exibida no catálogo' })
+  @IsOptional()
+  @IsString()
+  imagemUrl?: string;
+
+  @ApiPropertyOptional({ example: 7.49, description: 'Preço promocional do catálogo (menor que o preço de venda)' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  precoPromocional?: number;
+
   @ApiPropertyOptional({ example: '7891234567890' })
   @IsOptional()
   @IsString()
@@ -65,6 +82,23 @@ export class UpdateProductDto {
   @IsString()
   @MinLength(2)
   nome?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  descricao?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  imagemUrl?: string;
+
+  @ApiPropertyOptional({ description: 'Preço promocional (null remove a promoção)', nullable: true })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  precoPromocional?: number;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -119,11 +153,14 @@ export class ProductQueryDto extends PaginationQueryDto {
 export class ProductResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() nome!: string;
+  @ApiProperty({ nullable: true }) descricao!: string | null;
+  @ApiProperty({ nullable: true }) imagemUrl!: string | null;
   @ApiProperty({ nullable: true }) codigoBarras!: string | null;
   @ApiProperty() categoriaId!: string;
   @ApiProperty() categoriaNome!: string;
   @ApiProperty() precoCompra!: number;
   @ApiProperty() precoVenda!: number;
+  @ApiProperty({ nullable: true }) precoPromocional!: number | null;
   @ApiProperty() estoque!: number;
   @ApiProperty() estoqueMinimo!: number;
   @ApiProperty({ enum: Unidade }) unidade!: Unidade;
@@ -137,11 +174,14 @@ export class ProductResponseDto {
     return {
       id: p.id,
       nome: p.nome,
+      descricao: p.descricao,
+      imagemUrl: p.imagemUrl,
       codigoBarras: p.codigoBarras,
       categoriaId: p.categoriaId,
       categoriaNome: p.categoria.nome,
       precoCompra: Number(p.precoCompra),
       precoVenda: Number(p.precoVenda),
+      precoPromocional: p.precoPromocional ? Number(p.precoPromocional) : null,
       estoque,
       estoqueMinimo,
       unidade: p.unidade,

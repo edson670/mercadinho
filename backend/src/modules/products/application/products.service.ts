@@ -28,10 +28,13 @@ export class ProductsService {
 
     const produto = await this.repo.create({
       nome: dto.nome,
+      descricao: dto.descricao ?? null,
+      imagemUrl: dto.imagemUrl ?? null,
       codigoBarras: dto.codigoBarras ?? null,
       categoriaId: dto.categoriaId,
       precoCompra: dto.precoCompra,
       precoVenda: dto.precoVenda,
+      precoPromocional: dto.precoPromocional ?? null,
       estoque: dto.estoque ?? 0,
       estoqueMinimo: dto.estoqueMinimo,
       unidade: dto.unidade,

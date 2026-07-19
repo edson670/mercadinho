@@ -4,10 +4,13 @@ export const PRODUCT_REPOSITORY = Symbol('PRODUCT_REPOSITORY');
 
 export interface CreateProductData {
   nome: string;
+  descricao?: string | null;
+  imagemUrl?: string | null;
   codigoBarras?: string | null;
   categoriaId: string;
   precoCompra: number;
   precoVenda: number;
+  precoPromocional?: number | null;
   estoque: number;
   estoqueMinimo: number;
   unidade: Unidade;

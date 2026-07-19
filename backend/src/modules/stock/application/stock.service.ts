@@ -14,7 +14,8 @@ export interface ApplyMovementParams {
   delta: number;
   tipo: TipoMovimentacaoEstoque;
   origem: OrigemMovimentacao;
-  usuarioId: string;
+  /** Ausente = movimentação originada pelo sistema (ex.: pedido público WhatsApp). */
+  usuarioId?: string;
   motivo?: string;
   referenciaId?: string;
 }

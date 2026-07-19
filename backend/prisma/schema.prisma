@@ -53,6 +53,7 @@ enum OrigemMovimentacao {
   COMPRA
   AJUSTE_MANUAL
   CANCELAMENTO
+  PEDIDO_WHATSAPP
 }
 
 enum StatusFiado {
@@ -69,6 +70,36 @@ enum StatusCaixa {
 enum TipoMovimentacaoCaixa {
   SANGRIA    // retirada
   SUPRIMENTO // reforço
+}
+
+enum StatusPedido {
+  RECEBIDO
+  EM_SEPARACAO
+  SAIU_PARA_ENTREGA
+  ENTREGUE
+  CANCELADO
+}
+
+enum OrigemPedido {
+  WHATSAPP
+}
+
+enum FormaPagamentoPedido {
+  PIX
+  DINHEIRO
+  CARTAO_CREDITO
+  CARTAO_DEBITO
+}
+
+enum DirecaoMensagem {
+  RECEBIDA
+  ENVIADA
+}
+
+enum StatusEnvioMensagem {
+  PENDENTE
+  ENVIADA
+  FALHOU
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -100,6 +131,7 @@ model Usuario {
   pagamentosFiado       PagamentoFiado[]
   auditorias            Auditoria[]
   refreshTokens         RefreshToken[]
+  historicoPedidos      HistoricoStatusPedido[]
 
   @@index([email])
   @@map("usuarios")
@@ -136,8 +168,10 @@ model Cliente {
 
   vendas   VendaModel[]
   fiados   Fiado[]
+  pedidos  Pedido[]
 
   @@index([nome])
+  @@index([telefone])
   @@map("clientes")
 }
 
@@ -159,11 +193,15 @@ model Categoria {
 model Produto {
   id             String   @id @default(uuid())
   nome           String
+  descricao      String?
+  imagemUrl      String?
   codigoBarras   String?  @unique
   categoriaId    String
   categoria      Categoria @relation(fields: [categoriaId], references: [id])
   precoCompra    Decimal  @db.Decimal(10, 2)
   precoVenda     Decimal  @db.Decimal(10, 2)
+  // preço promocional ativo no catálogo quando preenchido (menor que precoVenda)
+  precoPromocional Decimal? @db.Decimal(10, 2)
   estoque        Decimal  @db.Decimal(10, 3) @default(0)
   estoqueMinimo  Decimal  @db.Decimal(10, 3) @default(0)
   unidade        Unidade  @default(UN)
@@ -174,6 +212,7 @@ model Produto {
 
   itensVenda           ItemVenda[]
   itensCompra          ItemCompra[]
+  itensPedido          ItemPedido[]
   movimentacoesEstoque MovimentacaoEstoque[]
 
   @@index([nome])
@@ -192,10 +231,11 @@ model MovimentacaoEstoque {
   estoqueAnterior    Decimal                 @db.Decimal(10, 3)
   estoqueResultante  Decimal                 @db.Decimal(10, 3)
   motivo             String?
-  // referência polimórfica opcional (venda/compra que originou)
+  // referência polimórfica opcional (venda/compra/pedido que originou)
   referenciaId       String?
-  usuarioId          String
-  usuario            Usuario                 @relation(fields: [usuarioId], references: [id])
+  // null = movimentação originada pelo sistema (ex.: pedido público do WhatsApp)
+  usuarioId          String?
+  usuario            Usuario?                @relation(fields: [usuarioId], references: [id])
   criadoEm           DateTime                @default(now())
 
   @@index([produtoId])
@@ -425,4 +465,98 @@ model Configuracao {
   atualizadoEm DateTime @updatedAt
 
   @@map("configuracoes")
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PEDIDOS WHATSAPP (delivery)
+// ══════════════════════════════════════════════════════════════
+
+model Pedido {
+  id             String               @id @default(uuid())
+  numero         Int                  @default(autoincrement())
+  // token opaco para o cliente acompanhar o pedido sem login
+  trackingToken  String               @unique @default(uuid())
+  // chave enviada pelo catálogo para tornar o POST idempotente (anti duplo clique)
+  idempotencyKey String?              @unique
+
+  clienteId      String?
+  cliente        Cliente?             @relation(fields: [clienteId], references: [id])
+  // snapshot dos dados no momento do pedido (histórico imutável)
+  nomeCliente    String
+  telefone       String
+
+  // endereço de entrega embutido (snapshot — ver ADR A3 em docs/10)
+  logradouro     String
+  numeroEndereco String
+  complemento    String?
+  bairro         String
+  cidade         String
+  referencia     String?
+
+  formaPagamento FormaPagamentoPedido
+  trocoPara      Decimal?             @db.Decimal(10, 2)
+
+  subtotal       Decimal              @db.Decimal(10, 2)
+  total          Decimal              @db.Decimal(10, 2)
+  status         StatusPedido         @default(RECEBIDO)
+  origem         OrigemPedido         @default(WHATSAPP)
+  observacoes    String?
+
+  criadoEm       DateTime             @default(now())
+  atualizadoEm   DateTime             @updatedAt
+
+  itens          ItemPedido[]
+  historico      HistoricoStatusPedido[]
+  mensagens      MensagemWhatsApp[]
+
+  @@index([status])
+  @@index([telefone])
+  @@index([criadoEm])
+  @@map("pedidos")
+}
+
+model ItemPedido {
+  id            String  @id @default(uuid())
+  pedidoId      String
+  pedido        Pedido  @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produtoId     String
+  produto       Produto @relation(fields: [produtoId], references: [id])
+  // snapshot: nome/preço do momento do pedido
+  nomeProduto   String
+  quantidade    Decimal @db.Decimal(10, 3)
+  precoUnitario Decimal @db.Decimal(10, 2)
+  subtotal      Decimal @db.Decimal(10, 2)
+
+  @@index([pedidoId])
+  @@map("itens_pedido")
+}
+
+model HistoricoStatusPedido {
+  id        String       @id @default(uuid())
+  pedidoId  String
+  pedido    Pedido       @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  status    StatusPedido
+  usuarioId String?      // null = ação automática do sistema
+  usuario   Usuario?     @relation(fields: [usuarioId], references: [id])
+  criadoEm  DateTime     @default(now())
+
+  @@index([pedidoId])
+  @@map("historico_status_pedido")
+}
+
+model MensagemWhatsApp {
+  id          String              @id @default(uuid())
+  pedidoId    String?
+  pedido      Pedido?             @relation(fields: [pedidoId], references: [id])
+  telefone    String
+  direcao     DirecaoMensagem
+  conteudo    String
+  statusEnvio StatusEnvioMensagem @default(PENDENTE)
+  erro        String?
+  criadoEm    DateTime            @default(now())
+
+  @@index([telefone])
+  @@index([pedidoId])
+  @@index([statusEnvio])
+  @@map("mensagens_whatsapp")
 }
