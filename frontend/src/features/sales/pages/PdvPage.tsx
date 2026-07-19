@@ -12,6 +12,8 @@ import {
   HandCoins,
   History,
   AlertTriangle,
+  MessageCircle,
+  CircleCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,8 +23,9 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { ProductSearchSelect } from '@/features/products/components/ProductSearchSelect';
 import { CustomerSearchSelect } from '@/features/customers/components/CustomerSearchSelect';
 import { useCurrentCash } from '@/features/cash-register/api/use-cash-register';
+import { useActiveOrdersCount } from '@/features/orders/api/use-orders';
 import { usePdvCart } from '@/stores/pdv-cart.store';
-import { formatCurrency, cn } from '@/lib/utils';
+import { formatCurrency, formatDateTime, cn } from '@/lib/utils';
 import { toast } from '@/stores/toast.store';
 import type { Customer } from '@/features/customers/api/customers.api';
 import type { FormaPagamento } from '../api/sales.api';
@@ -40,6 +43,7 @@ export function PdvPage() {
   const { items, addItem, setQty, removeItem, desconto, setDesconto, clear, subtotal, total } =
     usePdvCart();
   const { data: caixa } = useCurrentCash();
+  const { data: pedidosNovos } = useActiveOrdersCount();
   const createSale = useCreateSale();
 
   const [pagamento, setPagamento] = useState<FormaPagamento>('DINHEIRO');
@@ -78,6 +82,22 @@ export function PdvPage() {
         }
       />
 
+      {Boolean(pedidosNovos) && (
+        <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/5 px-4 py-3 text-sm">
+          <span className="relative flex h-3 w-3 shrink-0">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+            <span className="relative inline-flex h-3 w-3 rounded-full bg-destructive" />
+          </span>
+          <MessageCircle className="h-4 w-4 text-destructive" />
+          <span className="text-destructive">
+            {pedidosNovos} {pedidosNovos === 1 ? 'pedido novo' : 'pedidos novos'} pelo WhatsApp aguardando separação.
+          </span>
+          <Button size="sm" variant="destructive" className="ml-auto" onClick={() => navigate('/pedidos-whatsapp')}>
+            Ver pedidos
+          </Button>
+        </div>
+      )}
+
       {!caixa && (
         <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
           <AlertTriangle className="h-4 w-4" />
@@ -85,6 +105,14 @@ export function PdvPage() {
           <Button size="sm" variant="outline" className="ml-auto" onClick={() => navigate('/caixa')}>
             Abrir caixa
           </Button>
+        </div>
+      )}
+
+      {caixa && (
+        <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
+          <CircleCheck className="h-4 w-4" />
+          Caixa aberto {caixa.usuarioNome ? `por ${caixa.usuarioNome} ` : ''}desde {formatDateTime(caixa.abertoEm)} ·
+          Abertura: {formatCurrency(caixa.valorAbertura)}
         </div>
       )}
 
@@ -189,9 +217,9 @@ export function PdvPage() {
                   onChange={(e) => setDesconto(Number(e.target.value) || 0)}
                 />
               </div>
-              <div className="flex justify-between border-t pt-3 text-lg font-bold">
-                <span>Total</span>
-                <span>{formatCurrency(tot)}</span>
+              <div className="flex items-center justify-between rounded-md bg-primary/5 px-3 py-3">
+                <span className="text-sm font-medium text-muted-foreground">Total</span>
+                <span className="text-2xl font-bold text-primary">{formatCurrency(tot)}</span>
               </div>
 
               {/* Forma de pagamento */}
