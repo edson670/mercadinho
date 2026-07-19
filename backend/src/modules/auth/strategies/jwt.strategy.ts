@@ -26,6 +26,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
   /** Retorno é injetado em request.user (AuthUser). */
   async validate(payload: JwtPayload): Promise<AuthUser> {
+    // Outros tokens assinados com o mesmo segredo (ex.: sessão do catálogo)
+    // não têm `sub` — recusa antes de consultar o banco, evitando um 500.
+    if (!payload?.sub || typeof payload.sub !== 'string') {
+      throw new UnauthorizedException('Token inválido para esta operação.');
+    }
+
     const user = await this.users.findById(payload.sub);
     if (!user || !user.ativo) {
       throw new UnauthorizedException('Sessão inválida ou usuário inativo.');

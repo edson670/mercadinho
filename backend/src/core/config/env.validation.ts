@@ -51,6 +51,30 @@ class EnvironmentVariables {
   @IsOptional()
   @IsString()
   CORS_ORIGIN = 'http://localhost:5173';
+
+  // ── Integração WhatsApp (Evolution API) ──
+  // Sem estas variáveis o sistema funciona normalmente: as mensagens são
+  // apenas registradas no banco e no log (ver docs/10-pedidos-whatsapp.md).
+  @IsOptional()
+  @IsString()
+  EVOLUTION_BASE_URL?: string;
+
+  @IsOptional()
+  @IsString()
+  EVOLUTION_API_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  EVOLUTION_INSTANCE?: string;
+
+  /** Segredo do webhook. Sem ele, o endpoint fica desabilitado (fail-closed). */
+  @IsOptional()
+  @IsString()
+  WEBHOOK_SECRET?: string;
+
+  @IsOptional()
+  @IsString()
+  CATALOG_PUBLIC_URL = 'http://localhost:5173/catalogo';
 }
 
 export function validateEnv(config: Record<string, unknown>) {

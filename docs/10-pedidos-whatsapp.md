@@ -117,17 +117,53 @@ strings, XSS coberto pelo React, SQL injection coberto pelo Prisma.
 
 | Etapa | Entrega |
 |---|---|
-| **W1 — Núcleo de pedidos** | Schema + migration; `CriarPedidoUseCase` (valida/baixa estoque, transacional); status + histórico + estorno; endpoints públicos e administrativos; testes unitários |
-| **W2 — Evolution API** | `IWhatsAppGateway` + adaptador; webhook de entrada (saudação + link); mensagens automáticas por status; log `MensagemWhatsApp`; cadastro automático de cliente pelo número |
+| **W1 — Núcleo de pedidos** ✅ | Schema + migration; `CriarPedidoUseCase` (valida/baixa estoque, transacional); status + histórico + estorno; endpoints públicos e administrativos; testes unitários |
+| **W2 — Evolution API** ✅ | `IWhatsAppGateway` + adaptador; webhook de entrada (saudação + link); mensagens automáticas por status; log `MensagemWhatsApp`; cadastro automático de cliente pelo número |
 | **W3 — Catálogo web** | Rotas públicas React mobile-first: busca, categorias, promoção, carrinho fixo, checkout em 2 passos, skeleton/toast/animações |
 | **W4 — PDV tempo real** | Gateway Socket.IO; tela "Pedidos WhatsApp" (kanban de status + som de novo pedido); mudança de status com 1 clique |
 | **W5 — Impressão & admin** | Recibo PDF 80mm (auto-abrir ao chegar pedido); painel admin: filtros, cancelar, editar, reimprimir |
 | **W6 — Melhorias competitivas** | Priorizadas: recompra 1 clique → carrinho abandonado → cupons → agendamento → confirmação PIX → dashboard de delivery (cada uma aprovada individualmente) |
 
+## Decisões adicionais tomadas na W2
+
+### A10 — Degradação graciosa sem a Evolution API
+Se `EVOLUTION_BASE_URL/API_KEY/INSTANCE` não estiverem configurados, o
+`WHATSAPP_GATEWAY` resolve para `LoggingWhatsAppGateway`: as mensagens continuam
+sendo **gravadas em `MensagemWhatsApp`** e registradas no log, e todo o módulo de
+pedidos segue funcional. Permite desenvolver, testar e até operar (com aviso manual)
+antes de ter um número de WhatsApp conectado. `GET /public/whatsapp/health` informa
+o estado da integração.
+
+### A11 — Notificação nunca derruba o pedido
+`WhatsAppMessengerService` marca a mensagem como `FALHOU` com o erro e **não relança**.
+O `CompositeOrderNotifier` usa `Promise.allSettled`: um canal quebrado (WhatsApp fora
+do ar) não afeta os demais nem o fluxo transacional do pedido.
+
+### A12 — Webhook fail-closed com comparação em tempo constante
+Sem `WEBHOOK_SECRET` configurado, o endpoint responde **503** (desabilitado) em vez de
+aceitar tudo. O segredo é comparado com `timingSafeEqual`. Aceita via header
+`x-webhook-secret` ou query `?secret=`.
+
+### A13 — Telefone nunca vai na URL do catálogo
+O link enviado carrega um **JWT curto** (`?s=…`, validade 2h, claim `typ: 'catalog'`)
+resolvido por `GET /public/whatsapp/session`. Evita PII em query string (que acabaria
+em logs de servidor e histórico do navegador). O claim `typ` e a ausência de `sub`
+impedem que o token de catálogo seja usado como token de acesso da API.
+
+### A14 — Sem máquina de estados de conversa
+Qualquer mensagem recebida (de número novo ou conhecido) responde saudação + link.
+Um **anti-loop de 5 minutos** por telefone impede rajadas e eco de webhook. Mensagens
+próprias (`fromMe`) e de grupos são ignoradas.
+
 ## Pré-requisitos de infraestrutura (responsabilidade do operador)
+
+Necessários apenas para o WhatsApp **enviar de verdade** — o sistema roda sem eles:
 
 1. **Instância da Evolution API** rodando (container Docker próprio) conectada a um
    número de WhatsApp real (QR Code).
-2. URL pública para o webhook (produção: domínio; desenvolvimento: túnel tipo ngrok).
-3. Variáveis novas no `.env`: `EVOLUTION_BASE_URL`, `EVOLUTION_API_KEY`,
+2. URL pública para o webhook (produção: domínio; desenvolvimento: túnel tipo ngrok),
+   configurada na Evolution como
+   `POST https://SEU_DOMINIO/api/v1/webhooks/evolution?secret=<WEBHOOK_SECRET>`
+   no evento `messages.upsert`.
+3. Variáveis no `.env`: `EVOLUTION_BASE_URL`, `EVOLUTION_API_KEY`,
    `EVOLUTION_INSTANCE`, `WEBHOOK_SECRET`, `CATALOG_PUBLIC_URL`.

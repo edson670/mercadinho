@@ -1,10 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Pedido, StatusPedido } from '@prisma/client';
+import { Pedido, Prisma, StatusPedido } from '@prisma/client';
 
 export const ORDER_NOTIFIER = Symbol('ORDER_NOTIFIER');
 
 export type PedidoComItens = Pedido & {
-  itens: { nomeProduto: string; quantidade: unknown; precoUnitario: unknown }[];
+  itens: {
+    nomeProduto: string;
+    quantidade: Prisma.Decimal;
+    precoUnitario: Prisma.Decimal;
+    subtotal: Prisma.Decimal;
+  }[];
 };
 
 /**
