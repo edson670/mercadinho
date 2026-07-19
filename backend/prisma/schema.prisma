@@ -560,3 +560,18 @@ model MensagemWhatsApp {
   @@index([statusEnvio])
   @@map("mensagens_whatsapp")
 }
+
+// Sessão curta que carrega telefone/nome do cliente do WhatsApp até o
+// catálogo web, sem expor esses dados no link (ver ADR sobre link opaco
+// em docs/10-pedidos-whatsapp.md). Substitui o JWT usado antes: o link
+// enviado por WhatsApp ficava gigante e feio (~250 caracteres).
+model SessaoCatalogo {
+  id       String   @id @default(uuid())
+  codigo   String   @unique
+  telefone String
+  nome     String?
+  expiraEm DateTime
+  criadoEm DateTime @default(now())
+
+  @@map("sessoes_catalogo")
+}

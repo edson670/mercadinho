@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtModule } from '@nestjs/jwt';
 import { WHATSAPP_GATEWAY } from './domain/whatsapp.gateway';
 import { EvolutionWhatsAppGateway } from './infra/evolution-whatsapp.gateway';
 import { LoggingWhatsAppGateway } from './infra/logging-whatsapp.gateway';
@@ -11,7 +10,6 @@ import { HandleIncomingMessageUseCase } from './application/handle-incoming-mess
 import { EvolutionWebhookController } from './presentation/evolution-webhook.controller';
 
 @Module({
-  imports: [JwtModule.register({})],
   controllers: [EvolutionWebhookController],
   providers: [
     // Sem credenciais da Evolution, cai no gateway de log: o sistema de

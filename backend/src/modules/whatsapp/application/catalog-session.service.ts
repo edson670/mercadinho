@@ -1,51 +1,53 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
+import { randomBytes } from 'node:crypto';
+import { PrismaService } from '@core/database/prisma.service';
 
-interface CatalogSessionPayload {
-  /** Marca o tipo do token: impede que seja usado como token de acesso da API. */
-  typ: 'catalog';
-  telefone: string;
-  nome?: string;
-}
+const ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'; // sem 0/O/1/l/I ambíguos
+const TAMANHO_CODIGO = 8;
+const VALIDADE_HORAS = 2;
 
 /**
- * Token curto e opaco que carrega o telefone do cliente até o catálogo,
+ * Código curto e opaco que carrega o telefone do cliente até o catálogo,
  * para pré-preencher o checkout. Evita expor o telefone na URL (PII em
- * query string acabaria em logs/histórico do navegador).
+ * query string acabaria em logs/histórico do navegador) e mantém o link
+ * enviado por WhatsApp curto — um JWT embutido passava de 250 caracteres.
  */
 @Injectable()
 export class CatalogSessionService {
-  private readonly secret: string;
   private readonly catalogUrl: string;
 
   constructor(
-    private readonly jwt: JwtService,
+    private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
-    this.secret = this.config.getOrThrow<string>('JWT_ACCESS_SECRET');
     this.catalogUrl = (this.config.get<string>('CATALOG_PUBLIC_URL') ?? 'http://localhost:5173/catalogo')
       .replace(/\/+$/, '');
   }
 
   async criarLink(telefone: string, nome?: string): Promise<string> {
-    const payload: CatalogSessionPayload = { typ: 'catalog', telefone, nome };
-    const token = await this.jwt.signAsync(payload, {
-      secret: this.secret,
-      expiresIn: '2h',
+    const codigo = this.gerarCodigo();
+    const expiraEm = new Date(Date.now() + VALIDADE_HORAS * 60 * 60_000);
+    await this.prisma.sessaoCatalogo.create({
+      data: { codigo, telefone, nome, expiraEm },
     });
-    return `${this.catalogUrl}?s=${encodeURIComponent(token)}`;
+    return `${this.catalogUrl}?s=${codigo}`;
   }
 
-  async resolver(token: string): Promise<{ telefone: string; nome?: string }> {
-    try {
-      const payload = await this.jwt.verifyAsync<CatalogSessionPayload>(token, {
-        secret: this.secret,
-      });
-      if (payload.typ !== 'catalog') throw new Error('tipo inválido');
-      return { telefone: payload.telefone, nome: payload.nome };
-    } catch {
+  async resolver(codigo: string): Promise<{ telefone: string; nome?: string }> {
+    const sessao = await this.prisma.sessaoCatalogo.findUnique({ where: { codigo } });
+    if (!sessao || sessao.expiraEm.getTime() < Date.now()) {
       throw new UnauthorizedException('Link expirado. Envie uma mensagem para receber um novo.');
     }
+    return { telefone: sessao.telefone, nome: sessao.nome ?? undefined };
+  }
+
+  private gerarCodigo(): string {
+    const bytes = randomBytes(TAMANHO_CODIGO);
+    let codigo = '';
+    for (let i = 0; i < TAMANHO_CODIGO; i++) {
+      codigo += ALFABETO[bytes[i] % ALFABETO.length];
+    }
+    return codigo;
   }
 }
