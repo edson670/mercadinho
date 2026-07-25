@@ -24,3 +24,9 @@ export const resetSchema = z
     path: ['confirmar'],
   });
 export type ResetForm = z.infer<typeof resetSchema>;
+
+export const mfaCodeSchema = z.object({
+  // 6 dígitos (TOTP) ou 10 caracteres hex (código de recuperação).
+  codigo: z.string().min(6, 'Código inválido').max(10, 'Código inválido'),
+});
+export type MfaCodeForm = z.infer<typeof mfaCodeSchema>;

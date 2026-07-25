@@ -450,12 +450,59 @@ Vale registrar o que foi verificado e está correto:
 16. ✅ **B1** Swagger (`/docs`) só sobe fora de produção
     (`NODE_ENV !== 'production'`).
 
-### Fase 4 — conformidade e maturidade
+### Fase 4 — conformidade e maturidade — ⚠️ concluída com uma pendência de ambiente
 
-17. **B4** MFA para ADMINISTRADOR e GERENTE.
-18. Política de retenção/exclusão de dados (LGPD — ver §8).
-19. Backups criptografados com restauração testada.
-20. Reteste completo após as correções.
+17. ✅ **B4** MFA (TOTP, RFC 6238) implementado por completo: `POST /auth/mfa/setup`
+    (gera segredo + QR Code), `/mfa/enable` (confirma e emite 10 códigos de
+    recuperação de uso único, mostrados uma única vez), `/mfa/disable` (exige
+    senha **e** código — um access token roubado sozinho não desliga a
+    proteção), e o login em duas etapas (`mfaRequired`/`mfaToken` →
+    `/mfa/verify`). O segredo TOTP é cifrado em repouso (AES-256-GCM,
+    `MfaService`) — nunca gravado em claro. **Enforcement é opt-in, não
+    mandatório**: ativar é recomendado (nudge no login) para ADMINISTRADOR/
+    GERENTE, mas não bloqueia quem ainda não configurou — tornar obrigatório
+    exigiria uma janela de migração para as contas já existentes, o que não
+    fazia sentido aplicar abruptamente numa sessão de uso ativo. UI completa
+    no frontend (`MfaSettingsCard`, tela de login em duas etapas). 21 testes
+    novos, unitários, cobrindo bloqueio de força bruta e todo o fluxo de MFA.
+19. ✅ **Retenção/exclusão de dados (LGPD)** — novo módulo `LgpdModule`
+    (`/lgpd/*`, só `ADMINISTRADOR`): exportação de dados de um cliente (art.
+    18 II/V), anonimização (art. 18 VI — desidentifica cadastro e snapshot de
+    pedidos, apaga mensagens de WhatsApp do telefone) e expurgo automático de
+    `mensagens_whatsapp` além de `RETENCAO_MENSAGENS_DIAS` (90 dias por
+    padrão) — o item mais sensível apontado no §8 original. Detalhado em
+    [docs/13-lgpd-retencao.md](13-lgpd-retencao.md), que documenta também o
+    que ainda falta (consentimento no checkout, anonimização de venda/fiado).
+20. ⚠️ **Backups criptografados** — scripts prontos
+    (`infra/scripts/backup.sh`/`restore.sh`, AES-256-CBC via OpenSSL,
+    `restore.sh` cria um banco de teste separado por padrão em vez de
+    sobrescrever o banco em uso). **A restauração não foi testada de ponta a
+    ponta nesta sessão** — o Docker Desktop do ambiente ficou indisponível
+    (ver nota abaixo) no momento em que esse item seria validado.
+21. ⚠️ **Reteste completo** — parcial. Cobri o que dava para verificar sem
+    banco: type-check limpo (backend e frontend) e 49/49 testes unitários
+    (12 novos de MFA, 7 de LGPD). **Não foi possível** rodar o app de ponta a
+    ponta (login real com MFA, migração aplicada, backup restaurado) pelo
+    mesmo motivo de infraestrutura.
+
+> **Pendência de ambiente, não de código.** O Docker Desktop travou nesta
+> sessão de um jeito que sobreviveu a: matar os processos, `wsl --shutdown`,
+> reiniciar, e até `wsl --update` (que rodou e atualizou o WSL2 para 2.7.11,
+> mas não resolveu). Isso tipicamente exige um **reinício completo do
+> Windows** para o driver/kernel do WSL2 assentar. Depois de reiniciar,
+> antes de usar o sistema:
+> ```bash
+> cd backend
+> npx prisma migrate dev --name mfa_e_lgpd
+> ```
+> Isso aplica as colunas de MFA (`mfaSecretCifrado`, `mfaEnabled`,
+> `mfaRecoveryCodesJson`) que já estão em `schema.prisma` mas ainda não
+> foram migradas para o banco — `prisma generate` (sem precisar do banco) já
+> foi rodado, então o TypeScript compila normalmente; só falta a migração
+> em si. Depois de migrar, vale testar manualmente ao menos uma vez: ativar
+> o MFA num usuário, fazer logout/login completo, e rodar
+> `infra/scripts/backup.sh` seguido de `infra/scripts/restore.sh` num banco
+> de teste para validar a dupla antes de confiar nela em produção.
 
 ---
 

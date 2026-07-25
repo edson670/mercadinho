@@ -93,6 +93,31 @@ export class PrismaUserRepository implements IUserRepository {
     });
   }
 
+  async setMfaPendingSecret(id: string, secretCifrado: string): Promise<void> {
+    await this.prisma.usuario.update({ where: { id }, data: { mfaSecretCifrado: secretCifrado } });
+  }
+
+  async enableMfa(id: string, recoveryCodesHash: string[]): Promise<void> {
+    await this.prisma.usuario.update({
+      where: { id },
+      data: { mfaEnabled: true, mfaRecoveryCodesJson: JSON.stringify(recoveryCodesHash) },
+    });
+  }
+
+  async disableMfa(id: string): Promise<void> {
+    await this.prisma.usuario.update({
+      where: { id },
+      data: { mfaEnabled: false, mfaSecretCifrado: null, mfaRecoveryCodesJson: null },
+    });
+  }
+
+  async consumeRecoveryCode(id: string, recoveryCodesHashRestantes: string[]): Promise<void> {
+    await this.prisma.usuario.update({
+      where: { id },
+      data: { mfaRecoveryCodesJson: JSON.stringify(recoveryCodesHashRestantes) },
+    });
+  }
+
   async revokeSessions(id: string): Promise<void> {
     await this.prisma.refreshToken.updateMany({
       where: { usuarioId: id, revogado: false },

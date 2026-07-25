@@ -1,13 +1,16 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Role } from '@prisma/client';
 import { HashingService } from '@core/security/hashing.service';
 import { AuthUser } from '@core/auth/current-user.decorator';
 import { IUserRepository, USER_REPOSITORY } from '@modules/users/domain/user.repository';
 import { UserResponseDto } from '@modules/users/presentation/dto/user-response.dto';
 import { TokenService } from './token.service';
 import { MailerService } from './mailer.service';
+import { MfaService } from './mfa.service';
 import {
   ForgotPasswordDto,
   LoginDto,
+  MfaDisableDto,
   ResetPasswordDto,
 } from '../presentation/dto/auth.dto';
 
@@ -17,6 +20,9 @@ const FALHAS_ATE_BLOQUEIO = 5;
 const BLOQUEIO_BASE_MS = 60_000;
 const BLOQUEIO_MAX_MS = 30 * 60_000;
 
+/** Perfis para os quais o frontend deve insistir na ativação do MFA (B4). */
+const ROLES_MFA_RECOMENDADO: Role[] = [Role.ADMINISTRADOR, Role.GERENTE];
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -24,6 +30,7 @@ export class AuthService {
     private readonly hashing: HashingService,
     private readonly tokens: TokenService,
     private readonly mailer: MailerService,
+    private readonly mfa: MfaService,
   ) {}
 
   async login(dto: LoginDto) {
@@ -46,10 +53,122 @@ export class AuthService {
     }
 
     await this.users.limparFalhasLogin(user.id);
+
+    // Senha correta, mas com MFA ativo o login só termina depois do segundo
+    // fator — não emite tokens nem marca último login ainda.
+    if (user.mfaEnabled) {
+      const mfaToken = await this.tokens.issueMfaPendingToken(user.id);
+      return { mfaRequired: true as const, mfaToken };
+    }
+
+    await this.users.touchLastLogin(user.id);
+    const pair = await this.tokens.issuePair(user);
+
+    return {
+      ...pair,
+      mfaRequired: false as const,
+      mfaSetupRecommended: ROLES_MFA_RECOMENDADO.includes(user.role) && !user.mfaEnabled,
+      user: UserResponseDto.fromEntity(user),
+    };
+  }
+
+  /** Segundo passo do login quando a conta tem MFA ativo. */
+  async mfaVerify(mfaToken: string, codigo: string) {
+    const userId = await this.tokens.verifyMfaPendingToken(mfaToken);
+    const user = await this.users.findById(userId);
+    if (!user || !user.ativo || !user.mfaEnabled || !user.mfaSecretCifrado) {
+      throw new UnauthorizedException('Sessão de verificação inválida.');
+    }
+
+    const valido = await this.validarSegundoFator(user, codigo);
+    if (!valido) {
+      // Mesmo contador de força bruta do login — evita que o segundo fator
+      // vire uma porta lateral sem o mesmo freio contra tentativa e erro.
+      await this.registrarFalha(user.tentativasFalhas, user.id);
+      throw new UnauthorizedException('Código inválido.');
+    }
+
+    await this.users.limparFalhasLogin(user.id);
     await this.users.touchLastLogin(user.id);
     const pair = await this.tokens.issuePair(user);
 
     return { ...pair, user: UserResponseDto.fromEntity(user) };
+  }
+
+  async mfaSetup(userId: string) {
+    const user = await this.users.findById(userId);
+    if (!user) throw new UnauthorizedException();
+    if (user.mfaEnabled) {
+      throw new BadRequestException('MFA já está ativo. Desative antes de reconfigurar.');
+    }
+
+    const { secret, otpauthUrl } = this.mfa.gerarSegredo(user.email);
+    // Fica "pendente" até a confirmação em mfaEnable — chamar /setup de novo
+    // simplesmente substitui o segredo pendente anterior.
+    await this.users.setMfaPendingSecret(userId, this.mfa.cifrar(secret));
+
+    return {
+      qrCodeDataUrl: await this.mfa.gerarQrCodeDataUrl(otpauthUrl),
+      manualEntryKey: secret,
+    };
+  }
+
+  async mfaEnable(userId: string, codigo: string) {
+    const user = await this.users.findById(userId);
+    if (!user) throw new UnauthorizedException();
+    if (user.mfaEnabled) throw new BadRequestException('MFA já está ativo.');
+    if (!user.mfaSecretCifrado) {
+      throw new BadRequestException('Chame /auth/mfa/setup antes de ativar.');
+    }
+
+    if (!this.mfa.verificarCodigo(user.mfaSecretCifrado, codigo)) {
+      throw new UnauthorizedException('Código inválido.');
+    }
+
+    const recoveryCodes = this.mfa.gerarCodigosRecuperacao();
+    const hashes = recoveryCodes.map((c) => this.hashing.tokenDigest(c));
+    await this.users.enableMfa(userId, hashes);
+
+    // Só existem em claro nesta resposta — nunca mais são recuperáveis.
+    return { message: 'MFA ativado.', recoveryCodes };
+  }
+
+  async mfaDisable(userId: string, dto: MfaDisableDto) {
+    const user = await this.users.findById(userId);
+    if (!user) throw new UnauthorizedException();
+    if (!user.mfaEnabled) throw new BadRequestException('MFA não está ativo.');
+
+    // Exige senha + segundo fator: um access token roubado sozinho não basta
+    // para desligar a proteção que o torna menos perigoso.
+    const senhaOk = await this.hashing.compare(dto.senha, user.senhaHash);
+    if (!senhaOk) throw new UnauthorizedException('Senha incorreta.');
+
+    const valido = await this.validarSegundoFator(user, dto.codigo);
+    if (!valido) throw new UnauthorizedException('Código inválido.');
+
+    await this.users.disableMfa(userId);
+    return { message: 'MFA desativado.' };
+  }
+
+  /** TOTP primeiro; se não bater, tenta como código de recuperação (single-use). */
+  private async validarSegundoFator(
+    user: { id: string; mfaSecretCifrado: string | null; mfaRecoveryCodesJson: string | null },
+    codigo: string,
+  ): Promise<boolean> {
+    if (user.mfaSecretCifrado && this.mfa.verificarCodigo(user.mfaSecretCifrado, codigo)) {
+      return true;
+    }
+
+    const hashes: string[] = user.mfaRecoveryCodesJson
+      ? JSON.parse(user.mfaRecoveryCodesJson)
+      : [];
+    const digest = this.hashing.tokenDigest(codigo);
+    const index = hashes.indexOf(digest);
+    if (index === -1) return false;
+
+    hashes.splice(index, 1);
+    await this.users.consumeRecoveryCode(user.id, hashes);
+    return true;
   }
 
   /**

@@ -44,6 +44,14 @@ export interface IUserRepository {
   registrarFalhaLogin(id: string, bloqueadoAte: Date | null): Promise<void>;
   limparFalhasLogin(id: string): Promise<void>;
 
+  // MFA (TOTP) — `secretCifrado` e os itens de `recoveryCodesHash` nunca são
+  // o valor em claro (ver MfaService.encrypt / HashingService.tokenDigest).
+  setMfaPendingSecret(id: string, secretCifrado: string): Promise<void>;
+  enableMfa(id: string, recoveryCodesHash: string[]): Promise<void>;
+  disableMfa(id: string): Promise<void>;
+  /** Substitui a lista após o uso de um código de recuperação (single-use). */
+  consumeRecoveryCode(id: string, recoveryCodesHashRestantes: string[]): Promise<void>;
+
   /**
    * Revoga todas as sessões ativas do usuário (refresh tokens).
    * Fica no repositório de usuários — e não no TokenService — porque

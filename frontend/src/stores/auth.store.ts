@@ -11,6 +11,8 @@ interface AuthState {
   /** Falso até a tentativa de restaurar a sessão terminar (evita piscar o login). */
   sessionReady: boolean;
   setSession: (payload: { user: AuthUser; accessToken: string }) => void;
+  /** Atualiza campos do perfil sem precisar de um novo login (ex.: mfaEnabled). */
+  patchUser: (patch: Partial<AuthUser>) => void;
   refresh: () => Promise<string | null>;
   restoreSession: () => Promise<void>;
   logout: () => Promise<void>;
@@ -35,6 +37,11 @@ export const useAuthStore = create<AuthState>()(
 
       setSession: ({ user, accessToken }) =>
         set({ user, accessToken, isAuthenticated: true, sessionReady: true }),
+
+      patchUser: (patch) => {
+        const current = get().user;
+        if (current) set({ user: { ...current, ...patch } });
+      },
 
       refresh: async () => {
         try {

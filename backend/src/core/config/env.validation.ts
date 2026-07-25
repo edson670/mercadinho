@@ -60,6 +60,22 @@ class EnvironmentVariables {
   @IsString()
   TRUST_PROXY?: string;
 
+  /**
+   * Chave (base64, 32 bytes) usada para cifrar o segredo TOTP do MFA em
+   * repouso. Opcional: sem ela, deriva-se uma chave de JWT_ACCESS_SECRET —
+   * conveniente em dev, mas recomenda-se uma chave própria em produção (gira
+   * independente do JWT).
+   */
+  @IsOptional()
+  @IsString()
+  MFA_ENCRYPTION_KEY?: string;
+
+  /** Prazo (dias) de retenção das mensagens de WhatsApp — LGPD, ver docs/11 §8. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  RETENCAO_MENSAGENS_DIAS = 90;
+
   // ── Integração WhatsApp (Evolution API) ──
   // Sem estas variáveis o sistema funciona normalmente: as mensagens são
   // apenas registradas no banco e no log (ver docs/10-pedidos-whatsapp.md).

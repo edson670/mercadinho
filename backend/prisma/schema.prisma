@@ -124,6 +124,13 @@ model Usuario {
   tentativasFalhas Int       @default(0)
   bloqueadoAte     DateTime?
 
+  // MFA (TOTP, RFC 6238) — ver docs/11 (achado B4). O segredo é gravado
+  // cifrado (AES-256-GCM, ver MfaService), nunca em claro; os códigos de
+  // recuperação seguem o mesmo tratamento dos demais tokens: só o digest.
+  mfaSecretCifrado    String?
+  mfaEnabled          Boolean  @default(false)
+  mfaRecoveryCodesJson String? // JSON de digests — um por código, removido ao usar
+
   criadoEm     DateTime  @default(now())
   atualizadoEm DateTime  @updatedAt
 

@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { toast } from '@/stores/toast.store';
+import { MfaSettingsCard } from '@/features/auth/components/MfaSettingsCard';
 import { useSettings, useUpdateSettings, useUploadLogo } from '../api/use-settings';
 
 const schema = z.object({
@@ -91,7 +92,7 @@ export function SettingsPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              accept="image/png,image/jpeg,image/webp"
               className="hidden"
               onChange={handleFileChange}
             />
@@ -108,7 +109,7 @@ export function SettingsPage() {
               )}
               Enviar logotipo
             </Button>
-            <p className="text-center text-xs text-muted-foreground">PNG, JPEG, WEBP ou SVG — até 2MB</p>
+            <p className="text-center text-xs text-muted-foreground">PNG, JPEG ou WEBP — até 2MB</p>
           </CardContent>
         </Card>
 
@@ -151,6 +152,10 @@ export function SettingsPage() {
             )}
           </CardContent>
         </Card>
+
+        <div className="lg:col-span-3">
+          <MfaSettingsCard />
+        </div>
       </div>
     </div>
   );

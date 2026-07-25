@@ -10,6 +10,7 @@ export class UserResponseDto {
   @ApiProperty() ativo!: boolean;
   @ApiProperty({ nullable: true }) ultimoLogin!: Date | null;
   @ApiProperty() criadoEm!: Date;
+  @ApiProperty({ description: 'Verificação em duas etapas (TOTP) ativa' }) mfaEnabled!: boolean;
 
   static fromEntity(u: Usuario): UserResponseDto {
     return {
@@ -20,6 +21,7 @@ export class UserResponseDto {
       ativo: u.ativo,
       ultimoLogin: u.ultimoLogin,
       criadoEm: u.criadoEm,
+      mfaEnabled: u.mfaEnabled,
     };
   }
 }

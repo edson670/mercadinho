@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString } from 'class-validator';
+import { IsEmail, IsString, Length } from 'class-validator';
 import { SenhaForte } from '@core/common/validators/senha-forte.decorator';
 
 export class LoginDto {
@@ -28,4 +28,33 @@ export class ResetPasswordDto {
 
   @SenhaForte()
   novaSenha!: string;
+}
+
+export class MfaEnableDto {
+  @ApiProperty({ example: '123456', description: 'Código de 6 dígitos do app autenticador' })
+  @IsString()
+  @Length(6, 8) // 8 cobre um código de recuperação usado por engano aqui
+  codigo!: string;
+}
+
+export class MfaVerifyDto {
+  @ApiProperty({ description: 'Token curto emitido pelo login quando MFA está ativo' })
+  @IsString()
+  mfaToken!: string;
+
+  @ApiProperty({ example: '123456', description: 'Código do app autenticador ou de recuperação' })
+  @IsString()
+  @Length(6, 10)
+  codigo!: string;
+}
+
+export class MfaDisableDto {
+  @ApiProperty({ description: 'Confirmação de identidade — senha atual' })
+  @IsString()
+  senha!: string;
+
+  @ApiProperty({ example: '123456' })
+  @IsString()
+  @Length(6, 10)
+  codigo!: string;
 }

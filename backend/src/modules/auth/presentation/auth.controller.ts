@@ -16,7 +16,14 @@ import type { CookieOptions, Request, Response } from 'express';
 import { Public } from '@core/auth/public.decorator';
 import { CurrentUser, AuthUser } from '@core/auth/current-user.decorator';
 import { AuthService } from '../application/auth.service';
-import { ForgotPasswordDto, LoginDto, ResetPasswordDto } from './dto/auth.dto';
+import {
+  ForgotPasswordDto,
+  LoginDto,
+  MfaDisableDto,
+  MfaEnableDto,
+  MfaVerifyDto,
+  ResetPasswordDto,
+} from './dto/auth.dto';
 import { REFRESH_COOKIE, clearRefreshCookie, refreshCookieOptions } from './refresh-cookie';
 
 @ApiTags('Autenticação')
@@ -40,9 +47,27 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Autentica e devolve o access token (refresh vai em cookie HttpOnly)' })
+  @ApiOperation({
+    summary: 'Autentica. Com MFA ativo, devolve mfaToken em vez de tokens de sessão',
+  })
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
-    const { refreshToken, ...resto } = await this.auth.login(dto);
+    const result = await this.auth.login(dto);
+    // Senha certa mas segundo fator pendente: nenhum token de sessão ainda —
+    // só o mfaToken de curta duração que autoriza chamar /auth/mfa/verify.
+    if (result.mfaRequired) return result;
+
+    const { refreshToken, ...resto } = result;
+    res.cookie(REFRESH_COOKIE, refreshToken, this.cookieOptions);
+    return resto;
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('mfa/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Segundo passo do login quando a conta tem MFA ativo' })
+  async mfaVerify(@Body() dto: MfaVerifyDto, @Res({ passthrough: true }) res: Response) {
+    const { refreshToken, ...resto } = await this.auth.mfaVerify(dto.mfaToken, dto.codigo);
     res.cookie(REFRESH_COOKIE, refreshToken, this.cookieOptions);
     return resto;
   }
@@ -97,5 +122,26 @@ export class AuthController {
   @ApiOperation({ summary: 'Redefine a senha com token' })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.auth.resetPassword(dto);
+  }
+
+  @Post('mfa/setup')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Gera o segredo TOTP e o QR Code para ativar o MFA' })
+  mfaSetup(@CurrentUser() user: AuthUser) {
+    return this.auth.mfaSetup(user.id);
+  }
+
+  @Post('mfa/enable')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Confirma o código do app autenticador e ativa o MFA' })
+  mfaEnable(@CurrentUser() user: AuthUser, @Body() dto: MfaEnableDto) {
+    return this.auth.mfaEnable(user.id, dto.codigo);
+  }
+
+  @Post('mfa/disable')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Desativa o MFA (exige senha + código)' })
+  mfaDisable(@CurrentUser() user: AuthUser, @Body() dto: MfaDisableDto) {
+    return this.auth.mfaDisable(user.id, dto);
   }
 }

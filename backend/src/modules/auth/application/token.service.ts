@@ -11,6 +11,11 @@ export interface TokenPair {
   refreshToken: string;
 }
 
+interface MfaPendingPayload {
+  sub: string;
+  typ: 'mfa_pending';
+}
+
 /**
  * Emite, persiste, rotaciona e revoga tokens de acesso/refresh.
  *
@@ -74,6 +79,31 @@ export class TokenService {
     });
 
     return this.issuePair(user);
+  }
+
+  /**
+   * Token curto que identifica "senha já validada, aguardando segundo fator"
+   * — nunca carrega role/email como o access token, e um `typ` próprio
+   * impede que seja reutilizado como token de acesso caso vaze.
+   */
+  async issueMfaPendingToken(usuarioId: string): Promise<string> {
+    const payload: MfaPendingPayload = { sub: usuarioId, typ: 'mfa_pending' };
+    return this.jwt.signAsync(payload, {
+      secret: this.config.getOrThrow('JWT_ACCESS_SECRET'),
+      expiresIn: '5m',
+    });
+  }
+
+  async verifyMfaPendingToken(token: string): Promise<string> {
+    try {
+      const payload = await this.jwt.verifyAsync<MfaPendingPayload>(token, {
+        secret: this.config.getOrThrow('JWT_ACCESS_SECRET'),
+      });
+      if (payload.typ !== 'mfa_pending') throw new Error('tipo inválido');
+      return payload.sub;
+    } catch {
+      throw new UnauthorizedException('Verificação expirada. Faça login novamente.');
+    }
   }
 
   /** Revoga um refresh token específico (logout). */

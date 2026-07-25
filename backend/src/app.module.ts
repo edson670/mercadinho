@@ -24,6 +24,7 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { LgpdModule } from './modules/lgpd/lgpd.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { OrdersModule } from './modules/orders/orders.module';
     AuditModule,
     SettingsModule,
     OrdersModule,
+    LgpdModule,
   ],
   controllers: [HealthController],
   providers: [
