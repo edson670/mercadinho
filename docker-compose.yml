@@ -5,10 +5,14 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: mercado
-      POSTGRES_PASSWORD: mercado
+      # Definida em .env (ver .env.example). Trocar a senha aqui NÃO altera a de
+      # um banco já existente — é preciso rodar ALTER USER (ver docs/11).
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mercado}
       POSTGRES_DB: mercado
     ports:
-      - "5432:5432"
+      # Só o próprio host acessa: sem o prefixo 127.0.0.1 o Docker publica em
+      # 0.0.0.0 e o banco fica alcançável por toda a rede local.
+      - "127.0.0.1:5432:5432"
     volumes:
       - mercado_pgdata:/var/lib/postgresql/data
       # Cria o banco "evolution" automaticamente em instalações novas (volume vazio).
@@ -29,9 +33,9 @@ services:
     profiles: ["tools"]
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@mercado.local
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
     ports:
-      - "5050:80"
+      - "127.0.0.1:5050:80"
     depends_on:
       - postgres
 
@@ -51,20 +55,24 @@ services:
     container_name: mercado_evolution_api
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      # Só o host: quem alcança esta porta com a API key controla a instância de
+      # WhatsApp da loja (ler mensagens, enviar em nome da empresa, parear
+      # dispositivos). Nunca publicar em 0.0.0.0.
+      - "127.0.0.1:8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
       evolution-redis:
         condition: service_started
     environment:
-      # Troque em produção — é a chave que o backend usa em EVOLUTION_API_KEY.
-      AUTHENTICATION_API_KEY: "mercado-evolution-dev-key"
+      # Definida em .env (ver .env.example) — precisa ser igual a
+      # EVOLUTION_API_KEY em backend/.env.
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:?defina EVOLUTION_API_KEY no .env}
       SERVER_URL: http://localhost:8080
 
       DATABASE_ENABLED: "true"
       DATABASE_PROVIDER: postgresql
-      DATABASE_CONNECTION_URI: "postgresql://mercado:mercado@postgres:5432/evolution?schema=public"
+      DATABASE_CONNECTION_URI: "postgresql://mercado:${POSTGRES_PASSWORD:-mercado}@postgres:5432/evolution?schema=public"
       DATABASE_CONNECTION_CLIENT_NAME: mercado_evolution
       DATABASE_SAVE_DATA_INSTANCE: "true"
       DATABASE_SAVE_DATA_NEW_MESSAGE: "true"

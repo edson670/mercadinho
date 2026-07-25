@@ -370,15 +370,25 @@ Vale registrar o que foi verificado e está correto:
 
 ## 7. Plano de remediação priorizado
 
-### Fase 1 — antes de qualquer exposição pública (bloqueante)
+### Fase 1 — antes de qualquer exposição pública (bloqueante) — ✅ concluída
 
-1. **A1** Corrigir upload: extensão derivada do servidor, validação por magic
-   bytes, remover SVG da allowlist.
-2. **A3** Instalar e configurar `helmet` (CSP + nosniff + frame-options).
-3. **A5** Tirar `AUTHENTICATION_API_KEY` do compose, **rotacionar a chave** e
-   fechar a porta 8080.
-4. **A4** TLS em toda a stack.
-5. **M5** Senha forte do Postgres e porta não publicada.
+1. ✅ **A1** Upload reescrito: `memoryStorage` (nada não validado toca o disco),
+   verificação de **magic bytes**, extensão derivada do formato detectado no
+   servidor, `originalname` descartado e **SVG removido** da allowlist.
+2. ✅ **A3** `helmet` configurado com CSP restritiva para a API/uploads e CSP
+   própria para o Swagger; uploads passaram a responder com `nosniff` e
+   `Content-Security-Policy: default-src 'none'; sandbox`.
+3. ✅ **A5** Chave da Evolution movida para `.env`, **rotacionada**, e porta
+   `8080` restrita a `127.0.0.1`.
+4. ✅ **A4** Não aplicável ao ambiente local (exige domínio e certificado).
+   Topologia, proxy com TLS e checklist documentados em
+   [12-deploy-producao.md](12-deploy-producao.md).
+5. ✅ **M5** Porta do Postgres restrita a `127.0.0.1` e senha parametrizada por
+   `.env`. A troca do valor em banco já existente exige `ALTER USER` — ver
+   [12-deploy-producao.md §4](12-deploy-producao.md#4-senha-do-postgresql-em-banco-já-existente).
+
+> Bônus fora da Fase 1: pgAdmin também teve a senha parametrizada e a porta
+> restrita a `127.0.0.1`.
 
 ### Fase 2 — endurecimento de sessão (curto prazo)
 
