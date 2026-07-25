@@ -12,9 +12,21 @@ frontend, backend, PostgreSQL, Evolution API, dependências e conformidade LGPD.
 
 ---
 
+> **Status atual: as 4 fases do plano de remediação (§7) foram concluídas e
+> validadas** — incluindo teste de ponta a ponta do MFA contra o servidor real
+> e da dupla backup/restore. O corpo deste documento abaixo preserva a
+> avaliação **original**, anterior às correções, como registro do que foi
+> encontrado; o estado após cada fase está anotado inline nas seções §7 e
+> nos achados individuais. Dois itens documentados como aceitos (não
+> corrigidos) por razão técnica, não por omissão: **M6** (a Evolution API não
+> expõe configuração de headers customizados no webhook global) e **M10**
+> (o advisory restante do `react-router` não tem versão corrigida disponível
+> e não se aplica ao modo de uso deste projeto).
+
 ## 1. Resumo executivo
 
-**Nível de risco geral: MÉDIO-ALTO para produção · BAIXO para o uso local atual.**
+**Nível de risco geral (na avaliação original, pré-correção): MÉDIO-ALTO para
+produção · BAIXO para o uso local atual.**
 
 A base tem fundamentos de segurança bem escolhidos — Argon2, Prisma
 parametrizado, guards globais na ordem correta, validação com whitelist,
@@ -450,7 +462,7 @@ Vale registrar o que foi verificado e está correto:
 16. ✅ **B1** Swagger (`/docs`) só sobe fora de produção
     (`NODE_ENV !== 'production'`).
 
-### Fase 4 — conformidade e maturidade — ⚠️ concluída com uma pendência de ambiente
+### Fase 4 — conformidade e maturidade — ✅ concluída e validada de ponta a ponta
 
 17. ✅ **B4** MFA (TOTP, RFC 6238) implementado por completo: `POST /auth/mfa/setup`
     (gera segredo + QR Code), `/mfa/enable` (confirma e emite 10 códigos de
@@ -473,36 +485,38 @@ Vale registrar o que foi verificado e está correto:
     padrão) — o item mais sensível apontado no §8 original. Detalhado em
     [docs/13-lgpd-retencao.md](13-lgpd-retencao.md), que documenta também o
     que ainda falta (consentimento no checkout, anonimização de venda/fiado).
-20. ⚠️ **Backups criptografados** — scripts prontos
-    (`infra/scripts/backup.sh`/`restore.sh`, AES-256-CBC via OpenSSL,
-    `restore.sh` cria um banco de teste separado por padrão em vez de
-    sobrescrever o banco em uso). **A restauração não foi testada de ponta a
-    ponta nesta sessão** — o Docker Desktop do ambiente ficou indisponível
-    (ver nota abaixo) no momento em que esse item seria validado.
-21. ⚠️ **Reteste completo** — parcial. Cobri o que dava para verificar sem
-    banco: type-check limpo (backend e frontend) e 49/49 testes unitários
-    (12 novos de MFA, 7 de LGPD). **Não foi possível** rodar o app de ponta a
-    ponta (login real com MFA, migração aplicada, backup restaurado) pelo
-    mesmo motivo de infraestrutura.
+20. ✅ **Backups criptografados** — `infra/scripts/backup.sh`/`restore.sh`
+    (AES-256-CBC via OpenSSL). **Restauração testada de ponta a ponta**: dump
+    do banco real → cifrado → restaurado em `mercado_restore_test` (banco
+    separado, nunca sobrescreve o banco em uso sem confirmação explícita) →
+    contagem de linhas em `usuarios`/`produtos`/`pedidos` conferida idêntica
+    entre original e restaurado. Banco de teste e arquivo de backup removidos
+    depois da validação.
+21. ✅ **Reteste completo** — migration `mfa_e_lgpd` aplicada, backend subido
+    de verdade, e o fluxo de MFA testado ponta a ponta contra o servidor real
+    (não só mockado): login → `mfaRequired` → `/mfa/setup` → código TOTP real
+    gerado a partir do segredo devolvido → `/mfa/enable` → login completo em
+    duas etapas com `/mfa/verify` → um código de recuperação usado com
+    sucesso e o reuso do mesmo código corretamente rejeitado (confirma o
+    single-use) → `/mfa/disable` restaurando a conta ao estado original.
+    49/49 testes unitários passando contra o schema migrado.
 
-> **Pendência de ambiente, não de código.** O Docker Desktop travou nesta
-> sessão de um jeito que sobreviveu a: matar os processos, `wsl --shutdown`,
-> reiniciar, e até `wsl --update` (que rodou e atualizou o WSL2 para 2.7.11,
-> mas não resolveu). Isso tipicamente exige um **reinício completo do
-> Windows** para o driver/kernel do WSL2 assentar. Depois de reiniciar,
-> antes de usar o sistema:
-> ```bash
-> cd backend
-> npx prisma migrate dev --name mfa_e_lgpd
-> ```
-> Isso aplica as colunas de MFA (`mfaSecretCifrado`, `mfaEnabled`,
-> `mfaRecoveryCodesJson`) que já estão em `schema.prisma` mas ainda não
-> foram migradas para o banco — `prisma generate` (sem precisar do banco) já
-> foi rodado, então o TypeScript compila normalmente; só falta a migração
-> em si. Depois de migrar, vale testar manualmente ao menos uma vez: ativar
-> o MFA num usuário, fazer logout/login completo, e rodar
-> `infra/scripts/backup.sh` seguido de `infra/scripts/restore.sh` num banco
-> de teste para validar a dupla antes de confiar nela em produção.
+> **A causa raiz do travamento do Docker Desktop nesta sessão não era o
+> WSL2** (as tentativas de `wsl --shutdown`/`--update` foram diagnóstico
+> errado, embora inofensivas). Era um bug conhecido do Docker Desktop
+> 4.81 no recurso "Inference Manager" (Docker Model Runner): ele tentava
+> abrir um socket Unix (`dockerInference`) num formato de caminho que o
+> driver de filesystem do Windows rejeitava ("An address incompatible with
+> the requested protocol was used"), travando a inicialização — reportado en
+> [docker/desktop-feedback#342](https://github.com/docker/desktop-feedback/issues/342),
+> sem correção oficial até o momento desta análise. Nem reinício do Windows
+> nem deletar manualmente os arquivos de socket travados (`Remove-Item`,
+> `fsutil reparsepoint delete`, `rd /s /q` — todos falharam com o mesmo erro)
+> resolveram. O que funcionou foi **"Reset to factory defaults"** no próprio
+> diálogo de erro do Docker Desktop, que reinicializou os sockets do zero.
+> Se isso voltar a acontecer: o sintoma é o log em
+> `%LOCALAPPDATA%\Docker\log\host\com.docker.backend.exe.log` mencionando
+> "Inference manager" antes de travar.
 
 ---
 
