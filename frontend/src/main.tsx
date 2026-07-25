@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { useThemeStore } from '@/stores/theme.store';
+import '@fontsource-variable/inter';
 import './styles/globals.css';
 
 // Aplica o tema persistido antes do primeiro render.

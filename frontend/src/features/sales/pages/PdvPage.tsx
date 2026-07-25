@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/PageHeader';
-import { ProductSearchSelect } from '@/features/products/components/ProductSearchSelect';
+import { ProductGrid } from '../components/ProductGrid';
 import { CustomerSearchSelect } from '@/features/customers/components/CustomerSearchSelect';
 import { useCurrentCash } from '@/features/cash-register/api/use-cash-register';
 import { useActiveOrdersCount } from '@/features/orders/api/use-orders';
@@ -51,8 +51,7 @@ const ATALHO_PAGAMENTO: Record<string, FormaPagamento> = {
 
 export function PdvPage() {
   const navigate = useNavigate();
-  const { items, addItem, setQty, removeItem, desconto, setDesconto, clear, subtotal, total } =
-    usePdvCart();
+  const { items, setQty, removeItem, desconto, setDesconto, clear, subtotal, total } = usePdvCart();
   const { data: caixa } = useCurrentCash();
   const { data: pedidosNovos } = useActiveOrdersCount();
   const createSale = useCreateSale();
@@ -147,35 +146,27 @@ export function PdvPage() {
       )}
 
       <div className="grid gap-4 lg:grid-cols-3">
-        {/* Busca + carrinho */}
+        {/* Grade de produtos + carrinho */}
         <div className="space-y-4 lg:col-span-2">
           <Card>
             <CardContent className="pt-6">
-              <ProductSearchSelect
-                value={null}
-                onSelect={(p) => p && addItem(p)}
-                placeholder="Buscar produto por nome ou código de barras..."
-              />
+              <ProductGrid />
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <ShoppingCart className="h-4 w-4" /> Itens ({items.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {items.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  Nenhum item. Busque um produto para começar.
-                </p>
-              ) : (
+          {items.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <ShoppingCart className="h-4 w-4" /> Itens ({items.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-0 p-0">
                 <div className="divide-y">
                   {items.map((item) => (
-                    <div key={item.product.id} className="flex items-center gap-3 py-3">
-                      <div className="flex-1">
-                        <p className="font-medium">{item.product.nome}</p>
+                    <div key={item.product.id} className="flex items-center gap-3 px-4 py-2.5">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{item.product.nome}</p>
                         <p className="text-xs text-muted-foreground">
                           {formatCurrency(item.product.precoVenda)} · {item.product.unidade}
                         </p>
@@ -184,14 +175,14 @@ export function PdvPage() {
                         <Button
                           variant="outline"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-7 w-7"
                           onClick={() => setQty(item.product.id, item.quantidade - 1)}
                           disabled={item.quantidade <= 1}
                         >
                           <Minus className="h-3 w-3" />
                         </Button>
                         <Input
-                          className="h-8 w-16 text-center"
+                          className="h-7 w-14 text-center"
                           type="number"
                           step="0.001"
                           value={item.quantidade}
@@ -200,19 +191,19 @@ export function PdvPage() {
                         <Button
                           variant="outline"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-7 w-7"
                           onClick={() => setQty(item.product.id, item.quantidade + 1)}
                         >
                           <Plus className="h-3 w-3" />
                         </Button>
                       </div>
-                      <div className="w-24 text-right font-medium">
+                      <div className="w-20 text-right text-sm font-medium">
                         {formatCurrency(item.product.precoVenda * item.quantidade)}
                       </div>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="text-destructive"
+                        className="h-7 w-7 text-destructive"
                         onClick={() => removeItem(item.product.id)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -220,9 +211,9 @@ export function PdvPage() {
                     </div>
                   ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Resumo + pagamento */}

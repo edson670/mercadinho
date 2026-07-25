@@ -1,10 +1,12 @@
 import { NavLink } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Store, ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useUIStore } from '@/stores/ui.store';
 import { useAuthStore } from '@/stores/auth.store';
 import { useActiveOrdersCount } from '@/features/orders/api/use-orders';
+import { getBranding } from '@/features/settings/api/settings.api';
 import { visibleNavItems } from './navigation';
 
 /** Selo pulsante com a contagem de pedidos WhatsApp aguardando separação. */
@@ -29,6 +31,15 @@ export function Sidebar() {
   const { sidebarCollapsed, toggleSidebar, mobileMenuOpen, closeMobileMenu } = useUIStore();
   const role = useAuthStore((s) => s.user?.role);
   const items = visibleNavItems(role);
+  // Mesma marca usada na tela de login (AuthLayout) — a sidebar deixava de
+  // refletir o logo/nome que o cliente já personalizou em Configurações.
+  const { data: branding } = useQuery({
+    queryKey: ['branding'],
+    queryFn: getBranding,
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const nome = branding?.nome || 'Mercadinho';
 
   return (
     <>
@@ -49,12 +60,16 @@ export function Sidebar() {
           sidebarCollapsed && 'md:w-16',
         )}
       >
-        {/* Marca */}
+        {/* Marca — mesmo logo/nome personalizados na tela de login */}
         <div className="flex h-16 items-center gap-2 border-b px-4">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Store className="h-5 w-5" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary text-primary-foreground ring-2 ring-brand-gold/60">
+            {branding?.logoUrl ? (
+              <img src={branding.logoUrl} alt={nome} className="h-full w-full object-cover" />
+            ) : (
+              <Store className="h-5 w-5" />
+            )}
           </div>
-          {!sidebarCollapsed && <span className="text-lg font-semibold">Mercadinho</span>}
+          {!sidebarCollapsed && <span className="truncate text-lg font-semibold">{nome}</span>}
         </div>
 
         {/* Navegação */}
@@ -67,9 +82,9 @@ export function Sidebar() {
               onClick={closeMobileMenu}
               className={({ isActive }) =>
                 cn(
-                  'relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  'relative flex items-center gap-3 rounded-md border-l-2 border-transparent px-3 py-2 text-sm font-medium transition-colors',
                   isActive
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'border-brand-gold bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                   sidebarCollapsed && 'md:justify-center md:px-2',
                 )

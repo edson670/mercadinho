@@ -6,11 +6,14 @@ export type Unidade = 'UN' | 'KG' | 'L' | 'CX' | 'PCT';
 export interface Product {
   id: string;
   nome: string;
+  descricao: string | null;
+  imagemUrl: string | null;
   codigoBarras: string | null;
   categoriaId: string;
   categoriaNome: string;
   precoCompra: number;
   precoVenda: number;
+  precoPromocional: number | null;
   estoque: number;
   estoqueMinimo: number;
   unidade: Unidade;

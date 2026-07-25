@@ -1,4 +1,4 @@
-import { LogOut, Menu, User } from 'lucide-react';
+import { LogOut, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
@@ -10,6 +10,13 @@ const roleLabel: Record<string, string> = {
   GERENTE: 'Gerente',
   CAIXA: 'Caixa',
 };
+
+function iniciais(nome: string): string {
+  const partes = nome.trim().split(/\s+/);
+  const primeira = partes[0]?.[0] ?? '';
+  const ultima = partes.length > 1 ? partes[partes.length - 1][0] : '';
+  return (primeira + ultima).toUpperCase();
+}
 
 export function Topbar() {
   const user = useAuthStore((s) => s.user);
@@ -24,7 +31,7 @@ export function Topbar() {
   };
 
   return (
-    <header className="flex h-16 items-center justify-between border-b bg-card px-4 sm:px-6">
+    <header className="flex h-16 items-center justify-between border-b bg-card/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-card/80 sm:px-6">
       <Button
         variant="ghost"
         size="icon"
@@ -38,7 +45,9 @@ export function Topbar() {
       <div className="flex items-center gap-2 sm:gap-3">
         <ThemeToggle />
         <div className="flex items-center gap-2 rounded-md border px-2 py-1.5 sm:px-3">
-          <User className="h-4 w-4 text-muted-foreground" />
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-gold text-xs font-bold text-foreground">
+            {user ? iniciais(user.nome) : ''}
+          </span>
           <div className="hidden text-right leading-tight sm:block">
             <p className="text-sm font-medium">{user?.nome}</p>
             <p className="text-xs text-muted-foreground">
