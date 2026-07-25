@@ -87,6 +87,17 @@ services:
       CACHE_LOCAL_ENABLED: "false"
 
       # host.docker.internal: o backend roda no host (npm run start:dev), não em container.
+      #
+      # M6 (docs/11): o ideal seria mandar o segredo por header, não na URL —
+      # o controller já aceita `x-webhook-secret`. Mas a Evolution API v2 não
+      # tem uma env var de webhook global para headers customizados (só
+      # ENABLED/URL/WEBHOOK_BY_EVENTS — confirmado no .env.example oficial do
+      # projeto); o suporte a headers existe apenas no endpoint por instância
+      # (POST /webhook/set/{instance}), que exigiria uma chamada extra à API
+      # após cada `docker compose up`. Risco residual aceito: esta URL nunca
+      # sai da rede interna (Docker→host em dev, container→container em
+      # produção — ver docs/12) — não passa por proxy público nem por log de
+      # acesso voltado à internet.
       WEBHOOK_GLOBAL_ENABLED: "true"
       WEBHOOK_GLOBAL_URL: "http://host.docker.internal:3000/api/v1/webhooks/evolution?secret=${WEBHOOK_SECRET:-troque-por-um-segredo-de-webhook}"
       WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS: "false"

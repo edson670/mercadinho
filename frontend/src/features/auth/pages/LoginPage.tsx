@@ -32,11 +32,7 @@ export function LoginPage() {
   const mutation = useMutation({
     mutationFn: login,
     onSuccess: (data) => {
-      setSession({
-        user: data.user,
-        accessToken: data.accessToken,
-        refreshToken: data.refreshToken,
-      });
+      setSession({ user: data.user, accessToken: data.accessToken });
       toast.success(`Bem-vindo, ${data.user.nome.split(' ')[0]}!`);
       navigate(from, { replace: true });
     },

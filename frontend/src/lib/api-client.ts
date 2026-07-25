@@ -4,6 +4,9 @@ import { useAuthStore } from '@/stores/auth.store';
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? '/api/v1',
   headers: { 'Content-Type': 'application/json' },
+  // Necessário para o cookie HttpOnly do refresh token acompanhar as chamadas
+  // de /auth (o backend responde com CORS credentials + origens explícitas).
+  withCredentials: true,
 });
 
 // Injeta o access token em cada requisição.
@@ -24,7 +27,10 @@ apiClient.interceptors.response.use(
     const original = error.config as (typeof error.config & { _retry?: boolean }) | undefined;
     const store = useAuthStore.getState();
 
-    if (error.response?.status === 401 && original && !original._retry && store.refreshToken) {
+    // Sem `store.refreshToken` para checar (ele não existe mais no cliente —
+    // vive só no cookie HttpOnly): tenta o refresh sempre que houver usuário
+    // logado, e deixa o próprio endpoint dizer se o cookie é válido.
+    if (error.response?.status === 401 && original && !original._retry && store.user) {
       original._retry = true;
       try {
         refreshing ??= store.refresh();
@@ -38,7 +44,7 @@ apiClient.interceptors.response.use(
       } catch {
         refreshing = null;
       }
-      store.logout();
+      await store.logout();
     }
     return Promise.reject(error);
   },

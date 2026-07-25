@@ -11,10 +11,6 @@ export async function login(payload: LoginPayload): Promise<LoginResponse> {
   return data;
 }
 
-export async function logout(refreshToken: string): Promise<void> {
-  await apiClient.post('/auth/logout', { refreshToken });
-}
-
 export async function forgotPassword(email: string): Promise<{ message: string }> {
   const { data } = await apiClient.post('/auth/forgot-password', { email });
   return data;

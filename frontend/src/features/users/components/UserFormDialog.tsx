@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { REQUISITOS_SENHA } from '@/lib/password';
 import { userFormSchema, type UserFormValues } from '../schemas/user.schema';
 import { useCreateUser, useUpdateUser } from '../api/use-users';
 import type { User } from '../api/users.api';
@@ -112,7 +113,11 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
           <div className="space-y-2">
             <Label htmlFor="senha">{isEdit ? 'Nova senha (opcional)' : 'Senha'}</Label>
             <Input id="senha" type="password" placeholder="••••••••" {...register('senha')} />
-            {errors.senha && <p className="text-xs text-destructive">{errors.senha.message}</p>}
+            {errors.senha ? (
+              <p className="text-xs text-destructive">{errors.senha.message}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">{REQUISITOS_SENHA}</p>
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

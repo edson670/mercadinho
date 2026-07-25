@@ -151,7 +151,48 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 
 ---
 
-## 5. Checklist antes de expor à internet
+## 5. Rate limiting em múltiplas réplicas
+
+O `ThrottlerModule` atual guarda contadores em memória do processo (achado
+M8). Para uma única instância — o formato deste projeto hoje — isso é
+suficiente: todo o tráfego passa pelo mesmo contador.
+
+O problema aparece só ao escalar horizontalmente (2+ réplicas atrás de um load
+balancer): cada réplica passa a ter seu próprio contador, então o limite
+efetivo vira `limite × número de réplicas`. Não implementar isso agora é
+proporcional ao estágio atual do projeto — adicionar um cliente Redis ao
+backend só para isso, sem outra instância rodando, seria complexidade sem
+benefício.
+
+Quando a segunda réplica entrar, trocar o storage do throttler por um
+compartilhado (o Redis da Evolution não deve ser reaproveitado — são
+domínios diferentes; subir um Redis dedicado ao backend):
+
+```bash
+npm i @nest-lab/throttler-storage-redis ioredis
+```
+
+```ts
+// app.module.ts
+import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
+import Redis from 'ioredis';
+
+ThrottlerModule.forRootAsync({
+  useFactory: () => ({
+    throttlers: [{ ttl: 60_000, limit: 100 }],
+    storage: new ThrottlerStorageRedisService(new Redis(process.env.REDIS_URL)),
+  }),
+}),
+```
+
+`app.set('trust proxy', ...)` (já implementado, controlado por `TRUST_PROXY`)
+continua necessário independente do storage — sem ele, atrás do proxy reverso
+todo cliente aparenta ter o mesmo IP, e o limite vira compartilhado por todo
+mundo em vez de por usuário.
+
+---
+
+## 6. Checklist antes de expor à internet
 
 - [ ] TLS válido, HTTP redirecionando para HTTPS, HSTS ativo
 - [ ] Backend movido para o compose; Postgres, Redis e Evolution **sem** portas publicadas

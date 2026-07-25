@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getApiErrorMessage } from '@/lib/api-client';
 import { toast } from '@/stores/toast.store';
+import { REQUISITOS_SENHA } from '@/lib/password';
 import { resetPassword } from '../api/auth.api';
 import { resetSchema, type ResetForm } from '../schemas/auth.schema';
 import { AuthLayout } from '../components/AuthLayout';
@@ -55,8 +56,10 @@ export function ResetPasswordPage() {
             <div className="space-y-2">
               <Label htmlFor="novaSenha">Nova senha</Label>
               <Input id="novaSenha" type="password" {...register('novaSenha')} />
-              {errors.novaSenha && (
+              {errors.novaSenha ? (
                 <p className="text-xs text-destructive">{errors.novaSenha.message}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">{REQUISITOS_SENHA}</p>
               )}
             </div>
             <div className="space-y-2">

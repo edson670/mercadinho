@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { useAuthStore } from '@/stores/auth.store';
 import { useUIStore } from '@/stores/ui.store';
-import { logout as apiLogout } from '@/features/auth/api/auth.api';
 
 const roleLabel: Record<string, string> = {
   ADMINISTRADOR: 'Administrador',
@@ -19,16 +18,8 @@ export function Topbar() {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    const refreshToken = useAuthStore.getState().refreshToken;
-    // Best-effort: revoga a sessão no backend; segue mesmo se falhar.
-    if (refreshToken) {
-      try {
-        await apiLogout(refreshToken);
-      } catch {
-        /* ignora erro de rede no logout */
-      }
-    }
-    logout();
+    // A store já chama /auth/logout (revoga o refresh token e limpa o cookie).
+    await logout();
     navigate('/login');
   };
 

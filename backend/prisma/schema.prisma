@@ -115,9 +115,14 @@ model Usuario {
   ativo        Boolean   @default(true)
   ultimoLogin  DateTime?
 
-  // recuperação de senha
+  // recuperação de senha — guarda o digest do token, nunca o valor em claro
   resetToken       String?
   resetTokenExpira DateTime?
+
+  // bloqueio progressivo contra força bruta (o rate limit por IP não cobre
+  // ataque distribuído contra uma conta específica)
+  tentativasFalhas Int       @default(0)
+  bloqueadoAte     DateTime?
 
   criadoEm     DateTime  @default(now())
   atualizadoEm DateTime  @updatedAt

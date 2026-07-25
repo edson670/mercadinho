@@ -40,6 +40,10 @@ export interface IUserRepository {
   updatePassword(id: string, senhaHash: string): Promise<void>;
   touchLastLogin(id: string): Promise<void>;
 
+  // bloqueio progressivo por conta (força bruta)
+  registrarFalhaLogin(id: string, bloqueadoAte: Date | null): Promise<void>;
+  limparFalhasLogin(id: string): Promise<void>;
+
   /**
    * Revoga todas as sessões ativas do usuário (refresh tokens).
    * Fica no repositório de usuários — e não no TokenService — porque

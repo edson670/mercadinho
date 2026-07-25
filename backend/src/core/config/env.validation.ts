@@ -52,6 +52,14 @@ class EnvironmentVariables {
   @IsString()
   CORS_ORIGIN = 'http://localhost:5173';
 
+  /**
+   * Número de proxies reversos à frente da API (ou expressão aceita pelo
+   * Express). Vazio em dev, onde não há proxy. Ver docs/12-deploy-producao.md.
+   */
+  @IsOptional()
+  @IsString()
+  TRUST_PROXY?: string;
+
   // ── Integração WhatsApp (Evolution API) ──
   // Sem estas variáveis o sistema funciona normalmente: as mensagens são
   // apenas registradas no banco e no log (ver docs/10-pedidos-whatsapp.md).

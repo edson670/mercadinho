@@ -79,6 +79,20 @@ export class PrismaUserRepository implements IUserRepository {
     await this.prisma.usuario.update({ where: { id }, data: { ultimoLogin: new Date() } });
   }
 
+  async registrarFalhaLogin(id: string, bloqueadoAte: Date | null): Promise<void> {
+    await this.prisma.usuario.update({
+      where: { id },
+      data: { tentativasFalhas: { increment: 1 }, bloqueadoAte },
+    });
+  }
+
+  async limparFalhasLogin(id: string): Promise<void> {
+    await this.prisma.usuario.update({
+      where: { id },
+      data: { tentativasFalhas: 0, bloqueadoAte: null },
+    });
+  }
+
   async revokeSessions(id: string): Promise<void> {
     await this.prisma.refreshToken.updateMany({
       where: { usuarioId: id, revogado: false },

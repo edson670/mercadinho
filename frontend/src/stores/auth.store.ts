@@ -1,50 +1,82 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import axios from 'axios';
 import type { AuthUser } from '@/types';
 
 interface AuthState {
   user: AuthUser | null;
+  /** Só em memória — some ao recarregar a página e é reobtido via refresh(). */
   accessToken: string | null;
-  refreshToken: string | null;
   isAuthenticated: boolean;
-  setSession: (payload: {
-    user: AuthUser;
-    accessToken: string;
-    refreshToken: string;
-  }) => void;
+  /** Falso até a tentativa de restaurar a sessão terminar (evita piscar o login). */
+  sessionReady: boolean;
+  setSession: (payload: { user: AuthUser; accessToken: string }) => void;
   refresh: () => Promise<string | null>;
-  logout: () => void;
+  restoreSession: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const API_URL = import.meta.env.VITE_API_URL ?? '/api/v1';
 
+/**
+ * O refresh token não passa mais pelo JavaScript: fica num cookie HttpOnly que
+ * o navegador envia sozinho (`withCredentials`). Por isso o access token pode
+ * viver só em memória — um XSS não encontra nada persistido para roubar.
+ * `partialize` garante que nem o access token nem flags derivadas vão para o
+ * localStorage; só o perfil do usuário, para não piscar a tela ao recarregar.
+ */
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
       accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
+      sessionReady: false,
 
-      setSession: ({ user, accessToken, refreshToken }) =>
-        set({ user, accessToken, refreshToken, isAuthenticated: true }),
+      setSession: ({ user, accessToken }) =>
+        set({ user, accessToken, isAuthenticated: true, sessionReady: true }),
 
       refresh: async () => {
-        const refreshToken = get().refreshToken;
-        if (!refreshToken) return null;
         try {
-          const { data } = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
-          set({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+          const { data } = await axios.post(
+            `${API_URL}/auth/refresh`,
+            {},
+            { withCredentials: true },
+          );
+          set({ accessToken: data.accessToken, isAuthenticated: true });
           return data.accessToken as string;
         } catch {
+          set({ user: null, accessToken: null, isAuthenticated: false });
           return null;
         }
       },
 
-      logout: () =>
-        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false }),
+      restoreSession: async () => {
+        // Sem usuário lembrado não há sessão a restaurar — evita um POST
+        // /auth/refresh inútil em toda visita de quem nunca entrou.
+        if (!get().user) {
+          set({ sessionReady: true });
+          return;
+        }
+        await get().refresh();
+        set({ sessionReady: true });
+      },
+
+      logout: async () => {
+        // Precisa chegar ao servidor: só ele consegue revogar o refresh token
+        // e apagar o cookie HttpOnly.
+        try {
+          await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true });
+        } catch {
+          /* logout local acontece de qualquer forma */
+        }
+        set({ user: null, accessToken: null, isAuthenticated: false, sessionReady: true });
+      },
     }),
-    { name: 'mercado-auth' },
+    {
+      name: 'mercado-auth',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ user: state.user }),
+    },
   ),
 );

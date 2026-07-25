@@ -15,12 +15,6 @@ export class LoginDto {
   senha!: string;
 }
 
-export class RefreshDto {
-  @ApiProperty()
-  @IsString()
-  refreshToken!: string;
-}
-
 export class ForgotPasswordDto {
   @ApiProperty({ example: 'admin@mercado.local' })
   @IsEmail()

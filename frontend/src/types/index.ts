@@ -7,12 +7,9 @@ export interface AuthUser {
   role: Role;
 }
 
-export interface AuthTokens {
+export interface LoginResponse {
+  // O refresh token não trafega mais no corpo — vai em cookie HttpOnly.
   accessToken: string;
-  refreshToken: string;
-}
-
-export interface LoginResponse extends AuthTokens {
   user: AuthUser;
 }
 

@@ -4,6 +4,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { json, urlencoded, type NextFunction, type Request, type Response } from 'express';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { join } from 'node:path';
 import { AppModule } from './app.module';
@@ -50,7 +51,18 @@ async function bootstrap() {
     bodyParser: false,
   });
   const config = app.get(ConfigService);
+  const isProduction = config.get<string>('NODE_ENV') === 'production';
 
+  // Atrás de proxy reverso, sem isto o Express enxerga o IP do proxy para todos
+  // os clientes: o rate limit vira global (um usuário bloqueia todo mundo) e o
+  // X-Forwarded-For do cliente passa a ser confiável — dá para forjar e escapar
+  // do limite. O valor é o número de proxies à frente (ver docs/12).
+  const trustProxy = config.get<string>('TRUST_PROXY');
+  if (trustProxy) {
+    app.set('trust proxy', /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy);
+  }
+
+  app.use(cookieParser());
   app.use((req: Request, res: Response, next: NextFunction) =>
     req.path.startsWith('/docs') ? docsHelmet(req, res, next) : apiHelmet(req, res, next),
   );
@@ -99,22 +111,25 @@ async function bootstrap() {
   // Tratamento de erros centralizado
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  // Swagger / OpenAPI
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('Sistema Mercadinho — API')
-    .setDescription('API REST para gestão de mercadinho (PDV, estoque, fiado, caixa).')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('docs', app, document, {
-    swaggerOptions: { persistAuthorization: true },
-  });
+  // Swagger / OpenAPI — fora de produção. Em produção ele entregaria o mapa
+  // completo da API (rotas, DTOs, papéis exigidos) a quem apenas abrisse /docs.
+  if (!isProduction) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('Sistema Mercadinho — API')
+      .setDescription('API REST para gestão de mercadinho (PDV, estoque, fiado, caixa).')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('docs', app, document, {
+      swaggerOptions: { persistAuthorization: true },
+    });
+  }
 
   const port = config.get<number>('PORT', 3000);
   await app.listen(port);
 
   Logger.log(`🚀 API em http://localhost:${port}/${apiPrefix}`, 'Bootstrap');
-  Logger.log(`📚 Swagger em http://localhost:${port}/docs`, 'Bootstrap');
+  if (!isProduction) Logger.log(`📚 Swagger em http://localhost:${port}/docs`, 'Bootstrap');
 }
 bootstrap();

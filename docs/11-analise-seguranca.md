@@ -413,14 +413,42 @@ Vale registrar o que foi verificado e está correto:
 > de casar e **todos os usuários precisarão entrar novamente**. É o
 > comportamento desejado para uma correção de sessão.
 
-### Fase 3 — robustez e operação (médio prazo)
+### Fase 3 — robustez e operação (médio prazo) — ✅ concluída
 
-11. **A2** Migrar refresh token para cookie `HttpOnly`.
-12. **M8** Rate limit no Redis + `trust proxy`.
-13. **M9** Bloqueio progressivo por conta.
-14. **M6** Segredo do webhook por cabeçalho.
-15. **M10** `npm audit fix` + verificação de dependências no CI.
-16. **B1** Swagger apenas fora de produção.
+11. ✅ **A2** Refresh token migrado para cookie `HttpOnly; SameSite=Lax`, restrito
+    ao path `/api/v1/auth` (`refresh-cookie.ts`). O access token agora vive só
+    em memória do lado do frontend (`useAuthStore` não persiste mais tokens no
+    `localStorage`, só o perfil do usuário) — um XSS deixa de ter qualquer
+    token persistido para roubar. `App.tsx` restaura a sessão no boot trocando
+    o cookie por um access token novo (`restoreSession`), e `ProtectedRoute`
+    espera esse processo (`sessionReady`) antes de decidir redirecionar.
+12. ✅ **M8** `app.set('trust proxy', ...)` implementado (variável
+    `TRUST_PROXY`, vazia em dev). O storage do throttler continua em memória —
+    correto para a instância única atual; a migração para Redis fica
+    documentada como passo de quando houver 2+ réplicas (ver
+    [docs/12 §5](12-deploy-producao.md#5-rate-limiting-em-múltiplas-réplicas)),
+    para não adicionar uma dependência sem benefício real hoje.
+13. ✅ **M9** Bloqueio progressivo por conta: a partir da 5ª falha, backoff
+    exponencial (1min → 2min → 4min..., teto de 30min). Conta bloqueada
+    responde com a mesma mensagem genérica de credencial errada — não
+    confirma que o bloqueio existe nem que o e-mail é válido. Redefinir a
+    senha com sucesso limpa o contador.
+14. ⚠️ **M6** Investigado e **parcialmente aceito como risco residual**: a
+    Evolution API v2 não expõe uma env var de webhook global para headers
+    customizados (confirmado no `.env.example` oficial do projeto — só
+    `WEBHOOK_GLOBAL_ENABLED/URL/WEBHOOK_BY_EVENTS`). O suporte a headers existe
+    apenas no endpoint por instância, que exigiria uma chamada extra à API
+    Evolution depois de cada subida do compose. Documentado o porquê e o
+    limite do risco (a URL nunca sai da rede interna) diretamente no
+    `docker-compose.yml`.
+15. ⚠️ **M10** `npm audit fix` rodado no frontend (3→2 altas). A vulnerabilidade
+    restante do `react-router` ainda não tem versão corrigida disponível — o
+    projeto já está na última release (7.18.1) e o advisory é específico do
+    modo RSC, que este projeto não usa. Backend: cadeia via `exceljs`
+    (relatórios) segue sem fix não-quebrante; `exceljs@3.4.0` corrigiria mas é
+    breaking change, não aplicado nesta fase.
+16. ✅ **B1** Swagger (`/docs`) só sobe fora de produção
+    (`NODE_ENV !== 'production'`).
 
 ### Fase 4 — conformidade e maturidade
 

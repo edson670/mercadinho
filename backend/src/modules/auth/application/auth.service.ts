@@ -11,6 +11,12 @@ import {
   ResetPasswordDto,
 } from '../presentation/dto/auth.dto';
 
+/** A partir da 5ª falha o bloqueio entra; antes disso só conta. */
+const FALHAS_ATE_BLOQUEIO = 5;
+/** Backoff exponencial: 1min, 2min, 4min... limitado a 30min. */
+const BLOQUEIO_BASE_MS = 60_000;
+const BLOQUEIO_MAX_MS = 30 * 60_000;
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -26,13 +32,42 @@ export class AuthService {
     if (!user) throw new UnauthorizedException('Credenciais inválidas.');
     if (!user.ativo) throw new UnauthorizedException('Usuário inativo.');
 
-    const senhaOk = await this.hashing.compare(dto.senha, user.senhaHash);
-    if (!senhaOk) throw new UnauthorizedException('Credenciais inválidas.');
+    // Conta bloqueada responde igual a credencial errada: informar o bloqueio
+    // confirmaria que o e-mail existe e ainda entregaria ao atacante o retorno
+    // de que vale a pena insistir nesta conta.
+    if (user.bloqueadoAte && user.bloqueadoAte > new Date()) {
+      throw new UnauthorizedException('Credenciais inválidas.');
+    }
 
+    const senhaOk = await this.hashing.compare(dto.senha, user.senhaHash);
+    if (!senhaOk) {
+      await this.registrarFalha(user.tentativasFalhas, user.id);
+      throw new UnauthorizedException('Credenciais inválidas.');
+    }
+
+    await this.users.limparFalhasLogin(user.id);
     await this.users.touchLastLogin(user.id);
     const pair = await this.tokens.issuePair(user);
 
     return { ...pair, user: UserResponseDto.fromEntity(user) };
+  }
+
+  /**
+   * Rate limit por IP não cobre ataque distribuído contra uma conta específica.
+   * O backoff é exponencial e curto para não virar negação de serviço: quem
+   * conhece o e-mail de alguém consegue atrapalhar, mas só por minutos.
+   */
+  private async registrarFalha(falhasAnteriores: number, usuarioId: string) {
+    const falhas = falhasAnteriores + 1;
+    if (falhas < FALHAS_ATE_BLOQUEIO) {
+      await this.users.registrarFalhaLogin(usuarioId, null);
+      return;
+    }
+    const espera = Math.min(
+      BLOQUEIO_BASE_MS * 2 ** (falhas - FALHAS_ATE_BLOQUEIO),
+      BLOQUEIO_MAX_MS,
+    );
+    await this.users.registrarFalhaLogin(usuarioId, new Date(Date.now() + espera));
   }
 
   async refresh(refreshToken: string) {
@@ -69,6 +104,10 @@ export class AuthService {
     const senhaHash = await this.hashing.hash(dto.novaSenha);
     await this.users.updatePassword(user.id, senhaHash);
     await this.users.clearResetToken(user.id);
+    // Quem redefiniu a senha com sucesso não deve continuar bloqueado pelas
+    // tentativas anteriores — inclusive porque redefinir é a saída legítima
+    // de quem esqueceu a senha e errou várias vezes.
+    await this.users.limparFalhasLogin(user.id);
     // Redefinir senha encerra todas as sessões: se a troca foi motivada por
     // suspeita de invasão, o refresh token do invasor morre junto.
     await this.users.revokeSessions(user.id);
