@@ -9,6 +9,13 @@ export interface JwtPayload {
   sub: string;
   email: string;
   role: string;
+  /**
+   * Só o refresh token carrega isto. JWT tem granularidade de 1s em iat/exp —
+   * sem um nonce, dois tokens assinados no mesmo segundo para o mesmo usuário
+   * ficam byte-idênticos e colidem no digest único gravado no banco (ver
+   * TokenService.issuePair).
+   */
+  jti?: string;
 }
 
 @Injectable()

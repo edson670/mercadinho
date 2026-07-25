@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Usuario } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 import { PrismaService } from '@core/database/prisma.service';
 import { HashingService } from '@core/security/hashing.service';
 import { JwtPayload } from '../strategies/jwt.strategy';
@@ -40,10 +41,13 @@ export class TokenService {
       expiresIn: this.config.get('JWT_ACCESS_EXPIRES', '15m'),
     });
 
-    const refreshToken = await this.jwt.signAsync(payload, {
-      secret: this.config.getOrThrow('JWT_REFRESH_SECRET'),
-      expiresIn: this.config.get('JWT_REFRESH_EXPIRES', '7d'),
-    });
+    const refreshToken = await this.jwt.signAsync(
+      { ...payload, jti: randomUUID() },
+      {
+        secret: this.config.getOrThrow('JWT_REFRESH_SECRET'),
+        expiresIn: this.config.get('JWT_REFRESH_EXPIRES', '7d'),
+      },
+    );
 
     await this.persistRefresh(user.id, refreshToken);
     return { accessToken, refreshToken };
@@ -72,11 +76,20 @@ export class TokenService {
       throw new UnauthorizedException('Usuário inválido ou inativo.');
     }
 
-    // Rotação: revoga o token usado e emite um novo par.
-    await this.prisma.refreshToken.update({
-      where: { id: registro.id },
+    // Rotação atômica: só uma requisição consegue marcar revogado=true a
+    // partir de false (o `where` inclui a condição, não é um update cego).
+    // Sem isso, duas renovações concorrentes com o mesmo token — o caso comum
+    // é o StrictMode do React disparando o boot duas vezes em dev, mas duas
+    // abas também bastam — passavam ambas pelo check acima e colidiam ao
+    // inserir o novo refresh token (mesmo segundo, mesmo payload → mesmo
+    // digest → violação de unicidade vazando como 500/409 de banco).
+    const { count } = await this.prisma.refreshToken.updateMany({
+      where: { id: registro.id, revogado: false },
       data: { revogado: true },
     });
+    if (count === 0) {
+      throw new UnauthorizedException('Sessão expirada. Faça login novamente.');
+    }
 
     return this.issuePair(user);
   }

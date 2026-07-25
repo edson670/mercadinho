@@ -21,6 +21,17 @@ interface AuthState {
 const API_URL = import.meta.env.VITE_API_URL ?? '/api/v1';
 
 /**
+ * Fora do store de propósito: precisa ser compartilhado por qualquer chamador
+ * de `refresh()` (o boot em App.tsx e o interceptor 401 do api-client são dois
+ * chamadores independentes). Sem isso, duas chamadas simultâneas — o caso mais
+ * comum é o StrictMode do React invocando o efeito de boot duas vezes em dev —
+ * disputam a rotação do mesmo refresh token; como a rotação no backend não é
+ * atômica, uma das duas perde a corrida e a store interpretava isso como
+ * "sessão inválida", derrubando um login que era válido.
+ */
+let refreshInFlight: Promise<string | null> | null = null;
+
+/**
  * O refresh token não passa mais pelo JavaScript: fica num cookie HttpOnly que
  * o navegador envia sozinho (`withCredentials`). Por isso o access token pode
  * viver só em memória — um XSS não encontra nada persistido para roubar.
@@ -43,19 +54,27 @@ export const useAuthStore = create<AuthState>()(
         if (current) set({ user: { ...current, ...patch } });
       },
 
-      refresh: async () => {
-        try {
-          const { data } = await axios.post(
-            `${API_URL}/auth/refresh`,
-            {},
-            { withCredentials: true },
-          );
-          set({ accessToken: data.accessToken, isAuthenticated: true });
-          return data.accessToken as string;
-        } catch {
-          set({ user: null, accessToken: null, isAuthenticated: false });
-          return null;
-        }
+      refresh: () => {
+        if (refreshInFlight) return refreshInFlight;
+
+        refreshInFlight = (async () => {
+          try {
+            const { data } = await axios.post(
+              `${API_URL}/auth/refresh`,
+              {},
+              { withCredentials: true },
+            );
+            set({ accessToken: data.accessToken, isAuthenticated: true });
+            return data.accessToken as string;
+          } catch {
+            set({ user: null, accessToken: null, isAuthenticated: false });
+            return null;
+          } finally {
+            refreshInFlight = null;
+          }
+        })();
+
+        return refreshInFlight;
       },
 
       restoreSession: async () => {

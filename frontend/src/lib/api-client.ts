@@ -19,8 +19,6 @@ apiClient.interceptors.request.use((config) => {
 });
 
 // Trata 401: tenta refresh uma vez; se falhar, faz logout.
-let refreshing: Promise<string | null> | null = null;
-
 apiClient.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
@@ -30,19 +28,18 @@ apiClient.interceptors.response.use(
     // Sem `store.refreshToken` para checar (ele não existe mais no cliente —
     // vive só no cookie HttpOnly): tenta o refresh sempre que houver usuário
     // logado, e deixa o próprio endpoint dizer se o cookie é válido.
+    //
+    // `store.refresh()` já deduplica chamadas concorrentes internamente (ver
+    // auth.store.ts) — não precisa de um guard próprio aqui: se o boot da
+    // aplicação já estiver renovando a sessão, esta chamada só reaproveita a
+    // mesma promise em andamento.
     if (error.response?.status === 401 && original && !original._retry && store.user) {
       original._retry = true;
-      try {
-        refreshing ??= store.refresh();
-        const newToken = await refreshing;
-        refreshing = null;
-        if (newToken) {
-          original.headers = original.headers ?? {};
-          original.headers.Authorization = `Bearer ${newToken}`;
-          return apiClient(original);
-        }
-      } catch {
-        refreshing = null;
+      const newToken = await store.refresh();
+      if (newToken) {
+        original.headers = original.headers ?? {};
+        original.headers.Authorization = `Bearer ${newToken}`;
+        return apiClient(original);
       }
       await store.logout();
     }
