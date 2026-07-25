@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import { SenhaForte } from '@core/common/validators/senha-forte.decorator';
 
 export class UpdateUserDto {
   @ApiPropertyOptional({ example: 'Maria Souza' })
@@ -14,10 +15,8 @@ export class UpdateUserDto {
   @IsEmail()
   email?: string;
 
-  @ApiPropertyOptional({ example: 'NovaSenha@123', minLength: 6 })
   @IsOptional()
-  @IsString()
-  @MinLength(6)
+  @SenhaForte()
   senha?: string;
 
   @ApiPropertyOptional({ enum: Role })

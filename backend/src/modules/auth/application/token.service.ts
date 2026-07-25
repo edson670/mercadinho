@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Usuario } from '@prisma/client';
 import { PrismaService } from '@core/database/prisma.service';
+import { HashingService } from '@core/security/hashing.service';
 import { JwtPayload } from '../strategies/jwt.strategy';
 
 export interface TokenPair {
@@ -10,13 +11,20 @@ export interface TokenPair {
   refreshToken: string;
 }
 
-/** Emite, persiste, rotaciona e revoga tokens de acesso/refresh. */
+/**
+ * Emite, persiste, rotaciona e revoga tokens de acesso/refresh.
+ *
+ * O refresh token nunca é gravado em texto puro: a tabela guarda apenas o
+ * digest SHA-256. Quem obtiver leitura do banco (backup vazado, acesso de
+ * DBA) não consegue reconstruir uma sessão utilizável.
+ */
 @Injectable()
 export class TokenService {
   constructor(
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly hashing: HashingService,
   ) {}
 
   async issuePair(user: Usuario): Promise<TokenPair> {
@@ -47,7 +55,9 @@ export class TokenService {
       throw new UnauthorizedException('Refresh token inválido ou expirado.');
     }
 
-    const registro = await this.prisma.refreshToken.findUnique({ where: { token: refreshToken } });
+    const registro = await this.prisma.refreshToken.findUnique({
+      where: { token: this.hashing.tokenDigest(refreshToken) },
+    });
     if (!registro || registro.revogado || registro.expiraEm < new Date()) {
       throw new UnauthorizedException('Sessão expirada. Faça login novamente.');
     }
@@ -69,7 +79,7 @@ export class TokenService {
   /** Revoga um refresh token específico (logout). */
   async revoke(refreshToken: string): Promise<void> {
     await this.prisma.refreshToken.updateMany({
-      where: { token: refreshToken },
+      where: { token: this.hashing.tokenDigest(refreshToken) },
       data: { revogado: true },
     });
   }
@@ -77,7 +87,9 @@ export class TokenService {
   private async persistRefresh(usuarioId: string, token: string): Promise<void> {
     const dias = this.parseDays(this.config.get('JWT_REFRESH_EXPIRES', '7d'));
     const expiraEm = new Date(Date.now() + dias * 24 * 60 * 60 * 1000);
-    await this.prisma.refreshToken.create({ data: { token, usuarioId, expiraEm } });
+    await this.prisma.refreshToken.create({
+      data: { token: this.hashing.tokenDigest(token), usuarioId, expiraEm },
+    });
   }
 
   private parseDays(expr: string): number {

@@ -24,4 +24,21 @@ describe('HashingService', () => {
     expect(t1).toHaveLength(64); // 32 bytes em hexadecimal
     expect(/^[0-9a-f]+$/.test(t1)).toBe(true);
   });
+
+  describe('tokenDigest', () => {
+    it('é determinístico — é o que permite buscar o token no banco', () => {
+      const token = service.randomToken();
+
+      expect(service.tokenDigest(token)).toEqual(service.tokenDigest(token));
+    });
+
+    it('não revela o token original e separa tokens diferentes', () => {
+      const token = service.randomToken();
+      const digest = service.tokenDigest(token);
+
+      expect(digest).not.toEqual(token);
+      expect(digest).toHaveLength(64); // sha256 em hexadecimal
+      expect(service.tokenDigest(service.randomToken())).not.toEqual(digest);
+    });
+  });
 });

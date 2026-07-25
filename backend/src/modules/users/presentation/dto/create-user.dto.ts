@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { IsEmail, IsEnum, IsString, MinLength } from 'class-validator';
+import { SenhaForte } from '@core/common/validators/senha-forte.decorator';
 
 export class CreateUserDto {
   @ApiProperty({ example: 'Maria Souza' })
@@ -12,9 +13,7 @@ export class CreateUserDto {
   @IsEmail()
   email!: string;
 
-  @ApiProperty({ example: 'Senha@123', minLength: 6 })
-  @IsString()
-  @MinLength(6)
+  @SenhaForte()
   senha!: string;
 
   @ApiProperty({ enum: Role, example: Role.CAIXA })

@@ -1,5 +1,5 @@
-import { CallHandler, ExecutionContext } from '@nestjs/common';
-import { of } from 'rxjs';
+import { CallHandler, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { of, throwError } from 'rxjs';
 import { PrismaService } from '@core/database/prisma.service';
 import { AuditInterceptor } from './audit.interceptor';
 
@@ -81,6 +81,42 @@ describe('AuditInterceptor', () => {
         });
         done();
       });
+    });
+  });
+
+  it('audita tentativa de login malsucedida sem gravar a senha', (done) => {
+    const create = jest.fn().mockResolvedValue(undefined);
+    const prisma = { auditoria: { create } } as unknown as PrismaService;
+    const interceptor = new AuditInterceptor(prisma);
+
+    const context = makeContext({
+      method: 'POST',
+      route: { path: '/auth/login' },
+      path: '/auth/login',
+      params: {},
+      headers: {},
+      ip: '203.0.113.10',
+      body: { email: 'admin@mercado.local', senha: 'tentativa-de-invasao' },
+    });
+    const handler = {
+      handle: () => throwError(() => new UnauthorizedException('Credenciais inválidas.')),
+    } as CallHandler;
+
+    interceptor.intercept(context, handler).subscribe({
+      error: () => {
+        setImmediate(() => {
+          expect(create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+              acao: 'POST /auth/login [FALHA]',
+              entidade: 'auth',
+              ip: '203.0.113.10',
+              dadosAntes: { email: 'admin@mercado.local' }, // senha removida
+              dadosDepois: { erro: '401 Credenciais inválidas.' },
+            }),
+          });
+          done();
+        });
+      },
     });
   });
 });

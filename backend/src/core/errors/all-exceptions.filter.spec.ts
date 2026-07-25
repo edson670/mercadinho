@@ -74,14 +74,22 @@ describe('AllExceptionsFilter', () => {
     );
   });
 
-  it('mapeia erros desconhecidos para 500', () => {
+  it('mapeia erros desconhecidos para 500 sem vazar a mensagem interna', () => {
     const { host, status, json } = makeHost();
 
-    filter.catch(new Error('Falha inesperada'), host);
+    filter.catch(new Error('conexão falhou em /srv/app/db.ts'), host);
 
     expect(status).toHaveBeenCalledWith(500);
     expect(json).toHaveBeenCalledWith(
-      expect.objectContaining({ statusCode: 500, message: 'Falha inesperada' }),
+      expect.objectContaining({
+        statusCode: 500,
+        message: 'Erro interno do servidor',
+        error: 'InternalServerError',
+      }),
+    );
+    // A mensagem original fica só no log — nunca no corpo da resposta.
+    expect(json).not.toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining('/srv/app') }),
     );
   });
 });

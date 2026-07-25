@@ -33,9 +33,18 @@ export interface IUserRepository {
   setActive(id: string, ativo: boolean): Promise<Usuario>;
 
   // recuperação de senha
+  // `token` aqui é sempre o digest (nunca o valor em claro) — ver HashingService.tokenDigest.
   setResetToken(id: string, token: string, expiraEm: Date): Promise<void>;
   findByResetToken(token: string): Promise<Usuario | null>;
   clearResetToken(id: string): Promise<void>;
   updatePassword(id: string, senhaHash: string): Promise<void>;
   touchLastLogin(id: string): Promise<void>;
+
+  /**
+   * Revoga todas as sessões ativas do usuário (refresh tokens).
+   * Fica no repositório de usuários — e não no TokenService — porque
+   * UsersModule também precisa disso ao trocar a senha, e importar AuthModule
+   * aqui criaria dependência circular (AuthModule já importa UsersModule).
+   */
+  revokeSessions(id: string): Promise<void>;
 }

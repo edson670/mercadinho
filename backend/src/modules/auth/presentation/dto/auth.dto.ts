@@ -1,14 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsString } from 'class-validator';
+import { SenhaForte } from '@core/common/validators/senha-forte.decorator';
 
 export class LoginDto {
   @ApiProperty({ example: 'admin@mercado.local' })
   @IsEmail()
   email!: string;
 
+  // Sem política aqui de propósito: o login apenas confere o hash. Aplicar as
+  // regras de complexidade nesta rota quebraria contas antigas e sinalizaria a
+  // política a quem estivesse tentando adivinhar a senha.
   @ApiProperty({ example: 'Admin@123' })
   @IsString()
-  @MinLength(6)
   senha!: string;
 }
 
@@ -29,8 +32,6 @@ export class ResetPasswordDto {
   @IsString()
   token!: string;
 
-  @ApiProperty({ example: 'NovaSenha@123', minLength: 6 })
-  @IsString()
-  @MinLength(6)
+  @SenhaForte()
   novaSenha!: string;
 }

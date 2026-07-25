@@ -78,4 +78,11 @@ export class PrismaUserRepository implements IUserRepository {
   async touchLastLogin(id: string): Promise<void> {
     await this.prisma.usuario.update({ where: { id }, data: { ultimoLogin: new Date() } });
   }
+
+  async revokeSessions(id: string): Promise<void> {
+    await this.prisma.refreshToken.updateMany({
+      where: { usuarioId: id, revogado: false },
+      data: { revogado: true },
+    });
+  }
 }

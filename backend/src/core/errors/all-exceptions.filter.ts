@@ -50,13 +50,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message = exception.message;
     } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
       ({ status, message, error } = this.mapPrismaError(exception));
-    } else if (exception instanceof Error) {
-      message = exception.message;
-      this.logger.error(exception.message, exception.stack);
     }
 
     if (status >= 500) {
       this.logger.error(`${request.method} ${request.url}`, exception as Error);
+      // Erros não mapeados podem carregar caminho de arquivo, nome de tabela ou
+      // detalhe de biblioteca. Ficam no log; o cliente recebe texto genérico.
+      message = 'Erro interno do servidor';
+      error = 'InternalServerError';
     }
 
     response.status(status).json({

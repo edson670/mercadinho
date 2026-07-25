@@ -31,6 +31,14 @@ export class UpdateUserUseCase {
     }
 
     const atualizado = await this.users.update(id, data);
+
+    // Troca de senha (ou rebaixamento de perfil) precisa derrubar as sessões
+    // ativas — senão o access/refresh token antigo continua carregando o papel
+    // anterior até expirar.
+    if (data.senhaHash || (dto.role && dto.role !== user.role)) {
+      await this.users.revokeSessions(id);
+    }
+
     return UserResponseDto.fromEntity(atualizado);
   }
 }

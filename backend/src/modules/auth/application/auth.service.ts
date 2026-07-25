@@ -54,20 +54,24 @@ export class AuthService {
     if (user && user.ativo) {
       const token = this.hashing.randomToken();
       const expiraEm = new Date(Date.now() + 60 * 60 * 1000); // 1h
-      await this.users.setResetToken(user.id, token, expiraEm);
+      // Só o digest vai para o banco; o token em claro existe apenas no e-mail.
+      await this.users.setResetToken(user.id, this.hashing.tokenDigest(token), expiraEm);
       await this.mailer.sendPasswordReset(user.email, token);
     }
     return { message: 'Se o e-mail existir, enviaremos instruções de recuperação.' };
   }
 
   async resetPassword(dto: ResetPasswordDto) {
-    const user = await this.users.findByResetToken(dto.token);
+    const user = await this.users.findByResetToken(this.hashing.tokenDigest(dto.token));
     if (!user || !user.resetTokenExpira || user.resetTokenExpira < new Date()) {
       throw new UnauthorizedException('Token inválido ou expirado.');
     }
     const senhaHash = await this.hashing.hash(dto.novaSenha);
     await this.users.updatePassword(user.id, senhaHash);
     await this.users.clearResetToken(user.id);
+    // Redefinir senha encerra todas as sessões: se a troca foi motivada por
+    // suspeita de invasão, o refresh token do invasor morre junto.
+    await this.users.revokeSessions(user.id);
     return { message: 'Senha redefinida com sucesso.' };
   }
 }

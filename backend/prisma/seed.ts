@@ -5,7 +5,9 @@ const prisma = new PrismaClient();
 
 async function main() {
   const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@mercado.local';
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'Admin@123';
+  // Só usado ao criar o admin do zero (o upsert não altera senha existente).
+  // Atende à política de SenhaForte — troque em produção.
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'Mercadinho@2026';
   const adminNome = process.env.SEED_ADMIN_NAME ?? 'Administrador';
   const empresaNome = process.env.SEED_EMPRESA_NOME ?? 'Meu Mercadinho';
 

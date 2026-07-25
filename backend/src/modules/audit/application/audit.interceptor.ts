@@ -1,6 +1,7 @@
 import {
   CallHandler,
   ExecutionContext,
+  HttpException,
   Injectable,
   NestInterceptor,
 } from '@nestjs/common';
@@ -45,17 +46,32 @@ export class AuditInterceptor implements NestInterceptor {
     const paramId = (request.params as Record<string, string> | undefined)?.id ?? null;
 
     return next.handle().pipe(
-      tap((responseBody) => {
-        const entidadeId = paramId ?? this.extractId(responseBody);
-        this.persist({
-          usuarioId: user?.id,
-          acao,
-          entidade,
-          entidadeId,
-          dadosAntes,
-          dadosDepois: this.sanitize(responseBody),
-          ip,
-        });
+      tap({
+        next: (responseBody) => {
+          this.persist({
+            usuarioId: user?.id,
+            acao,
+            entidade,
+            entidadeId: paramId ?? this.extractId(responseBody),
+            dadosAntes,
+            dadosDepois: this.sanitize(responseBody),
+            ip,
+          });
+        },
+        // Sem este ramo, tentativa de login malsucedida, 403 do RBAC e violação
+        // de regra de negócio não deixavam rastro nenhum — justamente os
+        // eventos que interessam para detectar ataque (OWASP A09).
+        error: (err: unknown) => {
+          this.persist({
+            usuarioId: user?.id,
+            acao: `${acao} [FALHA]`,
+            entidade,
+            entidadeId: paramId,
+            dadosAntes,
+            dadosDepois: { erro: this.describeError(err) },
+            ip,
+          });
+        },
       }),
     );
   }
@@ -86,6 +102,13 @@ export class AuditInterceptor implements NestInterceptor {
       .catch(() => {
         /* auditoria nunca deve quebrar a requisição original */
       });
+  }
+
+  /** Status + motivo, sem stack trace (que poderia expor caminhos internos). */
+  private describeError(err: unknown): string {
+    if (err instanceof HttpException) return `${err.getStatus()} ${err.message}`;
+    if (err instanceof Error) return err.message.slice(0, 300);
+    return 'erro desconhecido';
   }
 
   private extractEntity(path: string): string {

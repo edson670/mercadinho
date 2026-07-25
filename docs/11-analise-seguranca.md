@@ -390,13 +390,28 @@ Vale registrar o que foi verificado e está correto:
 > Bônus fora da Fase 1: pgAdmin também teve a senha parametrizada e a porta
 > restrita a `127.0.0.1`.
 
-### Fase 2 — endurecimento de sessão (curto prazo)
+### Fase 2 — endurecimento de sessão (curto prazo) — ✅ concluída
 
-6. **M1** Hashear refresh tokens e tokens de reset no banco.
-7. **M2** Revogar sessões ao redefinir senha.
-8. **M4** Não devolver mensagem interna em erros 500.
-9. **M7** Auditar também o caminho de erro (login falho, 403).
-10. **M3** Política de senha real.
+6. ✅ **M1** Refresh tokens e tokens de reset passam a ser gravados como digest
+   SHA-256 (`HashingService.tokenDigest`). O valor em claro só existe em
+   trânsito — no cookie/resposta e no e-mail de recuperação.
+7. ✅ **M2** Redefinir senha revoga todas as sessões. Estendido também à troca
+   de senha e ao **rebaixamento de perfil** feitos por um administrador, que
+   antes deixavam o token antigo circulando com o papel anterior.
+8. ✅ **M4** Erros não mapeados respondem `Erro interno do servidor`; a mensagem
+   original fica apenas no log do servidor.
+9. ✅ **M7** Auditoria passa a registrar o caminho de erro
+   (`tap({ next, error })`), com a ação marcada `[FALHA]` — login malsucedido,
+   403 do RBAC e violação de regra agora deixam rastro.
+10. ✅ **M3** Política de senha aplicada por `@SenhaForte()`: mínimo de 10
+    caracteres com maiúscula, minúscula e número, e teto de 128 (evita DoS de
+    CPU no argon2). Espelhada no frontend em `lib/password.ts`. **Não** vale
+    para o login, onde só se confere o hash — senhas antigas seguem válidas.
+
+> **Efeito colateral esperado no deploy:** como os tokens passam a ser
+> comparados por digest, os refresh tokens emitidos antes desta mudança deixam
+> de casar e **todos os usuários precisarão entrar novamente**. É o
+> comportamento desejado para uma correção de sessão.
 
 ### Fase 3 — robustez e operação (médio prazo)
 
