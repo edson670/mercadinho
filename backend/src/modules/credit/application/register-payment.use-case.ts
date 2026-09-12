@@ -25,16 +25,29 @@ export class RegisterPaymentUseCase {
         throw new BusinessRuleError('Este fiado já está quitado.');
       }
 
-      const saldoAtual = Number(fiado.saldo);
-      if (dto.valor > saldoAtual + 0.005) {
+      // Abatimento atômico: o novo valorPago não é calculado a partir do que
+      // foi lido acima — é um incremento que o banco aplica sobre o valor
+      // corrente, e a checagem de saldo viaja no `where`. Com o cálculo em
+      // memória, dois pagamentos simultâneos gravavam duas linhas em
+      // PagamentoFiado mas só um abatimento no fiado: o cliente pagava duas
+      // vezes e continuava devendo uma. A tolerância de meio centavo é a
+      // mesma de antes, para arredondamento.
+      const { count } = await tx.fiado.updateMany({
+        where: {
+          id: fiadoId,
+          status: { not: StatusFiado.QUITADO },
+          saldo: { gte: dto.valor - 0.005 },
+        },
+        data: {
+          valorPago: { increment: dto.valor },
+          saldo: { decrement: dto.valor },
+        },
+      });
+      if (count === 0) {
         throw new ValidationError(
-          `Valor (${dto.valor}) maior que o saldo devedor (${saldoAtual}).`,
+          `Valor (${dto.valor}) maior que o saldo devedor (${Number(fiado.saldo)}).`,
         );
       }
-
-      const novoPago = Number((Number(fiado.valorPago) + dto.valor).toFixed(2));
-      const novoSaldo = Number((Number(fiado.valorOriginal) - novoPago).toFixed(2));
-      const status = novoSaldo <= 0.005 ? StatusFiado.QUITADO : StatusFiado.PARCIAL;
 
       await tx.pagamentoFiado.create({
         data: {
@@ -45,9 +58,15 @@ export class RegisterPaymentUseCase {
         },
       });
 
+      // Status derivado do saldo que o banco realmente gravou.
+      const atualizado = await tx.fiado.findUniqueOrThrow({ where: { id: fiadoId } });
+      const saldoFinal = Number(atualizado.saldo);
       await tx.fiado.update({
         where: { id: fiadoId },
-        data: { valorPago: novoPago, saldo: Math.max(0, novoSaldo), status },
+        data: {
+          saldo: Math.max(0, saldoFinal),
+          status: saldoFinal <= 0.005 ? StatusFiado.QUITADO : StatusFiado.PARCIAL,
+        },
       });
 
       return { id: fiadoId };

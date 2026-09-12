@@ -30,6 +30,15 @@ export class CancelarPedidoUseCase {
     }
 
     const atualizado = await this.prisma.$transaction(async (tx) => {
+      // Transição condicional antes do estorno: as checagens acima rodam fora
+      // da transação, então dois cancelamentos simultâneos devolviam o estoque
+      // duas vezes. Só quem consegue mudar o status é que estorna.
+      const { count } = await tx.pedido.updateMany({
+        where: { id: pedidoId, status: { not: StatusPedido.CANCELADO } },
+        data: { status: StatusPedido.CANCELADO },
+      });
+      if (count === 0) throw new BusinessRuleError('Pedido já está cancelado.');
+
       for (const item of pedido.itens) {
         await this.stock.applyMovement(tx, {
           produtoId: item.produtoId,
@@ -46,10 +55,7 @@ export class CancelarPedidoUseCase {
         data: { pedidoId, status: StatusPedido.CANCELADO, usuarioId },
       });
 
-      return tx.pedido.update({
-        where: { id: pedidoId },
-        data: { status: StatusPedido.CANCELADO },
-      });
+      return tx.pedido.findUniqueOrThrow({ where: { id: pedidoId } });
     });
 
     this.notifier.orderStatusChanged(atualizado, StatusPedido.CANCELADO).catch((err) => {

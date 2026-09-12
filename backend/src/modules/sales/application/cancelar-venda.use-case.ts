@@ -31,6 +31,16 @@ export class CancelarVendaUseCase {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      // A transição para CANCELADA vem ANTES do estorno e é condicional: a
+      // checagem lá em cima acontece fora da transação, então dois pedidos de
+      // cancelamento simultâneos passavam os dois por ela e o estoque era
+      // devolvido em dobro. Só quem efetivamente muda o status estorna.
+      const { count } = await tx.vendaModel.updateMany({
+        where: { id: venda.id, status: { not: StatusVenda.CANCELADA } },
+        data: { status: StatusVenda.CANCELADA },
+      });
+      if (count === 0) throw new BusinessRuleError('Venda já está cancelada.');
+
       // Estorna o estoque de cada item.
       for (const item of venda.itens) {
         await this.stock.applyMovement(tx, {
@@ -48,11 +58,6 @@ export class CancelarVendaUseCase {
       if (venda.fiado) {
         await tx.fiado.delete({ where: { id: venda.fiado.id } });
       }
-
-      await tx.vendaModel.update({
-        where: { id: venda.id },
-        data: { status: StatusVenda.CANCELADA },
-      });
 
       return { id: venda.id };
     });
