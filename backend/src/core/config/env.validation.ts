@@ -1,11 +1,5 @@
 import { plainToInstance, Type } from 'class-transformer';
-import {
-  IsEnum,
-  IsNumber,
-  IsOptional,
-  IsString,
-  validateSync,
-} from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, validateSync } from 'class-validator';
 
 enum NodeEnv {
   Development = 'development',
@@ -99,6 +93,21 @@ class EnvironmentVariables {
   @IsOptional()
   @IsString()
   CATALOG_PUBLIC_URL = 'http://localhost:5173/catalogo';
+
+  // ── Geocodificação reversa (endereço pela localização no catálogo) ──
+  /** Serviço compatível com a API do Nominatim (OpenStreetMap). */
+  @IsOptional()
+  @IsString()
+  NOMINATIM_URL = 'https://nominatim.openstreetmap.org';
+
+  /**
+   * A política de uso do Nominatim exige um User-Agent que identifique a
+   * aplicação e dê um contato. Sem isso o IP é bloqueado — troque pelo
+   * e-mail real da loja antes de usar em produção.
+   */
+  @IsOptional()
+  @IsString()
+  GEOCODING_USER_AGENT = 'SistemaMercadinho/1.0 (contato: configure GEOCODING_USER_AGENT)';
 }
 
 export function validateEnv(config: Record<string, unknown>) {

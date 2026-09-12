@@ -27,6 +27,7 @@ import { AuditModule } from './modules/audit/audit.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { LgpdModule } from './modules/lgpd/lgpd.module';
+import { GeocodingModule } from './modules/geocoding/geocoding.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { LgpdModule } from './modules/lgpd/lgpd.module';
     SettingsModule,
     OrdersModule,
     LgpdModule,
+    GeocodingModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -4,7 +4,15 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
-import { ArrowLeft, Banknote, CreditCard, Loader2, QrCode, ShoppingBag, TriangleAlert } from 'lucide-react';
+import {
+  ArrowLeft,
+  Banknote,
+  CreditCard,
+  Loader2,
+  QrCode,
+  ShoppingBag,
+  TriangleAlert,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +23,8 @@ import { toast } from '@/stores/toast.store';
 import { useCartStore } from '../store/cart.store';
 import { useCatalogSessionStore } from '../store/session.store';
 import { createOrder, type FormaPagamentoPedido } from '../api/catalog.api';
+import { LocalizacaoAtual } from '../components/LocalizacaoAtual';
+import type { EnderecoPorLocalizacao } from '../api/geocoding.api';
 
 const schema = z
   .object({
@@ -58,7 +68,8 @@ export function CheckoutPage() {
   const pedidoConfirmadoRef = useRef(false);
 
   useEffect(() => {
-    if (items.length === 0 && !pedidoConfirmadoRef.current) navigate('/catalogo', { replace: true });
+    if (items.length === 0 && !pedidoConfirmadoRef.current)
+      navigate('/catalogo', { replace: true });
   }, [items.length, navigate]);
 
   const {
@@ -66,6 +77,8 @@ export function CheckoutPage() {
     control,
     handleSubmit,
     watch,
+    setValue,
+    setFocus,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -77,6 +90,27 @@ export function CheckoutPage() {
   });
 
   const formaPagamento = watch('formaPagamento');
+
+  /**
+   * Só sobrescreve o que o serviço realmente encontrou: em muitos endereços
+   * o OSM não tem o número, e apagar o que o cliente já digitou para colocar
+   * vazio seria pior que não preencher nada.
+   */
+  const preencherPelaLocalizacao = (endereco: EnderecoPorLocalizacao) => {
+    const campos = [
+      ['logradouro', endereco.logradouro],
+      ['numeroEndereco', endereco.numeroEndereco],
+      ['bairro', endereco.bairro],
+      ['cidade', endereco.cidade],
+    ] as const;
+
+    for (const [campo, valor] of campos) {
+      if (valor) setValue(campo, valor, { shouldValidate: true, shouldDirty: true });
+    }
+
+    // O que falta é justamente apartamento/bloco — leva o cliente até lá.
+    if (endereco.encontrado) setFocus('complemento');
+  };
 
   const mutation = useMutation({
     mutationFn: createOrder,
@@ -109,10 +143,7 @@ export function CheckoutPage() {
     });
   };
 
-  const resumo = useMemo(
-    () => items.map((i) => `${i.quantidade}x ${i.nome}`).join(', '),
-    [items],
-  );
+  const resumo = useMemo(() => items.map((i) => `${i.quantidade}x ${i.nome}`).join(', '), [items]);
 
   return (
     <div className="min-h-screen bg-background pb-32">
@@ -136,8 +167,8 @@ export function CheckoutPage() {
           <section className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm text-amber-700 dark:text-amber-400">
             <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
-              Para fazer o pedido, use o link que enviamos no WhatsApp. Mande uma mensagem
-              para a loja e você receberá um link novo.
+              Para fazer o pedido, use o link que enviamos no WhatsApp. Mande uma mensagem para a
+              loja e você receberá um link novo.
             </span>
           </section>
         )}
@@ -170,17 +201,26 @@ export function CheckoutPage() {
               className={cn(session.telefone && 'bg-muted text-muted-foreground')}
               {...register('telefone')}
             />
-            {errors.telefone && <p className="mt-1 text-xs text-destructive">{errors.telefone.message}</p>}
+            {errors.telefone && (
+              <p className="mt-1 text-xs text-destructive">{errors.telefone.message}</p>
+            )}
           </div>
         </section>
 
         <section className="space-y-3">
           <h2 className="text-sm font-semibold">Endereço de entrega</h2>
+
+          {/* Preenche rua/número/bairro/cidade pelo GPS e joga o foco no
+              complemento — o que sobra para o cliente é apartamento e bloco. */}
+          <LocalizacaoAtual onEndereco={preencherPelaLocalizacao} />
+
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2">
               <Label htmlFor="logradouro">Rua</Label>
               <Input id="logradouro" {...register('logradouro')} />
-              {errors.logradouro && <p className="mt-1 text-xs text-destructive">{errors.logradouro.message}</p>}
+              {errors.logradouro && (
+                <p className="mt-1 text-xs text-destructive">{errors.logradouro.message}</p>
+              )}
             </div>
             <div>
               <Label htmlFor="numeroEndereco">Número</Label>
@@ -198,12 +238,16 @@ export function CheckoutPage() {
             <div>
               <Label htmlFor="bairro">Bairro</Label>
               <Input id="bairro" {...register('bairro')} />
-              {errors.bairro && <p className="mt-1 text-xs text-destructive">{errors.bairro.message}</p>}
+              {errors.bairro && (
+                <p className="mt-1 text-xs text-destructive">{errors.bairro.message}</p>
+              )}
             </div>
             <div>
               <Label htmlFor="cidade">Cidade</Label>
               <Input id="cidade" {...register('cidade')} />
-              {errors.cidade && <p className="mt-1 text-xs text-destructive">{errors.cidade.message}</p>}
+              {errors.cidade && (
+                <p className="mt-1 text-xs text-destructive">{errors.cidade.message}</p>
+              )}
             </div>
           </div>
           <div>
@@ -241,15 +285,26 @@ export function CheckoutPage() {
           {formaPagamento === 'DINHEIRO' && (
             <div>
               <Label htmlFor="trocoPara">Troco para quanto?</Label>
-              <Input id="trocoPara" inputMode="decimal" placeholder="Ex.: 50" {...register('trocoPara')} />
-              {errors.trocoPara && <p className="mt-1 text-xs text-destructive">{errors.trocoPara.message}</p>}
+              <Input
+                id="trocoPara"
+                inputMode="decimal"
+                placeholder="Ex.: 50"
+                {...register('trocoPara')}
+              />
+              {errors.trocoPara && (
+                <p className="mt-1 text-xs text-destructive">{errors.trocoPara.message}</p>
+              )}
             </div>
           )}
         </section>
 
         <section>
           <Label htmlFor="observacoes">Observações (opcional)</Label>
-          <Textarea id="observacoes" placeholder="Ex.: sem cebola, entregar após 18h..." {...register('observacoes')} />
+          <Textarea
+            id="observacoes"
+            placeholder="Ex.: sem cebola, entregar após 18h..."
+            {...register('observacoes')}
+          />
         </section>
 
         <div className="fixed inset-x-0 bottom-0 mx-auto max-w-2xl border-t bg-background p-4">
