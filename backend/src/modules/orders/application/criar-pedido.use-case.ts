@@ -8,6 +8,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@core/database/prisma.service';
 import { BusinessRuleError, NotFoundError, ValidationError } from '@core/errors/domain.errors';
+import { comRetrySerializacao } from '@core/database/serializable.util';
 import { StockService } from '@modules/stock/application/stock.service';
 import { CatalogSessionService } from '@modules/whatsapp/application/catalog-session.service';
 import { toNationalDigits } from '@modules/whatsapp/domain/phone.util';
@@ -76,7 +77,8 @@ export class CriarPedidoUseCase {
       }
     }
 
-    const pedido = await this.prisma.$transaction(async (tx) => {
+    const pedido = await comRetrySerializacao(() =>
+      this.prisma.$transaction(async (tx) => {
       // Preços e disponibilidade sempre do banco.
       const itensCalculados = [];
       let subtotal = 0;
@@ -156,8 +158,9 @@ export class CriarPedidoUseCase {
         });
       }
 
-      return criado;
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+        return criado;
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }),
+    );
 
     this.notifier.orderCreated(pedido as PedidoComItens).catch((err) => {
       this.logger.error(`Falha ao notificar criação do pedido #${pedido.numero}`, err);

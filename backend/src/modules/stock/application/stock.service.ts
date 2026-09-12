@@ -6,6 +6,7 @@ import {
   TipoMovimentacaoEstoque,
 } from '@prisma/client';
 import { PrismaService } from '@core/database/prisma.service';
+import { comRetrySerializacao } from '@core/database/serializable.util';
 import { EstoqueInsuficienteError, NotFoundError } from '@core/errors/domain.errors';
 
 export interface ApplyMovementParams {
@@ -103,21 +104,23 @@ export class StockService {
     // gravação, o estoque final não é o valor que o operador digitou. Sob
     // Serializable o banco recusa a transação nesse caso, em vez de gravar
     // um número errado em silêncio.
-    return this.prisma.$transaction(
-      async (tx) => {
-        const produto = await tx.produto.findUnique({ where: { id: produtoId } });
-        if (!produto) throw new NotFoundError('Produto', produtoId);
-        const delta = novaQuantidade - Number(produto.estoque);
-        return this.applyMovement(tx, {
-          produtoId,
-          delta,
-          tipo: TipoMovimentacaoEstoque.AJUSTE,
-          origem: OrigemMovimentacao.AJUSTE_MANUAL,
-          usuarioId,
-          motivo,
-        });
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    return comRetrySerializacao(() =>
+      this.prisma.$transaction(
+        async (tx) => {
+          const produto = await tx.produto.findUnique({ where: { id: produtoId } });
+          if (!produto) throw new NotFoundError('Produto', produtoId);
+          const delta = novaQuantidade - Number(produto.estoque);
+          return this.applyMovement(tx, {
+            produtoId,
+            delta,
+            tipo: TipoMovimentacaoEstoque.AJUSTE,
+            origem: OrigemMovimentacao.AJUSTE_MANUAL,
+            usuarioId,
+            motivo,
+          });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      ),
     );
   }
 }

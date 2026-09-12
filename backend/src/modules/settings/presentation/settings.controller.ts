@@ -12,9 +12,9 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { memoryStorage } from 'multer';
 import { randomUUID } from 'node:crypto';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { existsSync, mkdirSync } from 'node:fs';
-import { writeFile } from 'node:fs/promises';
+import { unlink, writeFile } from 'node:fs/promises';
 import { Role } from '@prisma/client';
 import { Public } from '@core/auth/public.decorator';
 import { Roles } from '@core/auth/roles.decorator';
@@ -111,8 +111,23 @@ export class SettingsController {
     if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
     // Nome inteiro gerado no servidor: nada do `originalname` chega ao disco.
     const filename = `logo-${randomUUID()}${formato.ext}`;
+    const anterior = (await this.service.get()).logoUrl;
     await writeFile(join(UPLOADS_DIR, filename), file.buffer);
 
-    return this.service.updateLogo(`/uploads/${filename}`);
+    const atualizado = await this.service.updateLogo(`/uploads/${filename}`);
+    // A logo antiga não é mais referenciada por nada: sem isto cada troca
+    // deixava um arquivo para sempre na pasta pública. Só depois de a nova
+    // estar gravada e registrada, para uma falha aqui não deixar a
+    // configuração apontando para um arquivo que não existe mais.
+    await this.removerLogoAnterior(anterior);
+    return atualizado;
+  }
+
+  /** Só remove arquivos da própria pasta de uploads, nunca um caminho externo. */
+  private async removerLogoAnterior(logoUrl: string | null | undefined): Promise<void> {
+    if (!logoUrl?.startsWith('/uploads/')) return;
+    const nome = basename(logoUrl);
+    if (!nome.startsWith('logo-')) return;
+    await unlink(join(UPLOADS_DIR, nome)).catch(() => undefined);
   }
 }
