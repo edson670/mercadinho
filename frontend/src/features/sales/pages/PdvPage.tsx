@@ -25,6 +25,7 @@ import { CustomerSearchSelect } from '@/features/customers/components/CustomerSe
 import { useCurrentCash } from '@/features/cash-register/api/use-cash-register';
 import { useActiveOrdersCount } from '@/features/orders/api/use-orders';
 import { usePdvCart } from '@/stores/pdv-cart.store';
+import { precoEfetivo } from '@/features/products/api/products.api';
 import { formatCurrency, formatDateTime, cn } from '@/lib/utils';
 import { toast } from '@/stores/toast.store';
 import type { Customer } from '@/features/customers/api/customers.api';
@@ -181,7 +182,7 @@ export function PdvPage() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{item.product.nome}</p>
                         <p className="text-xs text-muted-foreground">
-                          {formatCurrency(item.product.precoVenda)} · {item.product.unidade}
+                          {formatCurrency(precoEfetivo(item.product))} · {item.product.unidade}
                         </p>
                       </div>
                       <div className="flex items-center gap-1">
@@ -211,7 +212,7 @@ export function PdvPage() {
                         </Button>
                       </div>
                       <div className="w-20 text-right text-sm font-medium">
-                        {formatCurrency(item.product.precoVenda * item.quantidade)}
+                        {formatCurrency(precoEfetivo(item.product) * item.quantidade)}
                       </div>
                       <Button
                         variant="ghost"
@@ -242,14 +243,24 @@ export function PdvPage() {
               </div>
               <div className="space-y-1">
                 <Label htmlFor="desconto" className="text-xs">Desconto (R$)</Label>
+                {/* Limitado ao subtotal na própria digitação: o backend
+                    recusa desconto maior que o subtotal, e sem o limite a
+                    tela mostrava Total R$ 0,00 e só acusava o erro no clique
+                    de finalizar. */}
                 <Input
                   id="desconto"
                   type="number"
                   step="0.01"
                   min="0"
+                  max={sub}
                   value={desconto || ''}
-                  onChange={(e) => setDesconto(Number(e.target.value) || 0)}
+                  onChange={(e) => setDesconto(Math.min(Number(e.target.value) || 0, sub))}
                 />
+                {desconto >= sub && sub > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Desconto limitado ao subtotal.
+                  </p>
+                )}
               </div>
               <div className="flex items-center justify-between rounded-md bg-primary/5 px-3 py-3">
                 <span className="text-sm font-medium text-muted-foreground">Total</span>

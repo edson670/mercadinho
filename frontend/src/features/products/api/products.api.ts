@@ -22,6 +22,16 @@ export interface Product {
   criadoEm: string;
 }
 
+/**
+ * Preço que o cliente realmente paga. Precisa espelhar o cálculo do backend
+ * (FinalizarVendaUseCase / CriarPedidoUseCase): se divergir, o total da tela
+ * não bate com o total cobrado.
+ */
+export function precoEfetivo(produto: Pick<Product, 'precoVenda' | 'precoPromocional'>): number {
+  const { precoVenda, precoPromocional } = produto;
+  return precoPromocional !== null && precoPromocional < precoVenda ? precoPromocional : precoVenda;
+}
+
 export interface ProductListParams {
   page?: number;
   limit?: number;

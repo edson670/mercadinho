@@ -58,7 +58,14 @@ export class FinalizarVendaUseCase {
         if (!produto) throw new NotFoundError('Produto', item.produtoId);
         if (!produto.ativo) throw new BusinessRuleError(`Produto inativo: ${produto.nome}`);
 
-        const precoUnitario = Number(produto.precoVenda);
+        // Mesma regra do catálogo: promoção vale no balcão também. O PDV
+        // cobrava sempre o preço cheio, então o mesmo produto saía por
+        // valores diferentes conforme o cliente pedisse pelo WhatsApp ou
+        // comprasse na loja — e o preço anunciado é o que vale.
+        const precoVenda = Number(produto.precoVenda);
+        const promocional = produto.precoPromocional ? Number(produto.precoPromocional) : null;
+        const precoUnitario =
+          promocional !== null && promocional < precoVenda ? promocional : precoVenda;
         const sub = Number((precoUnitario * item.quantidade).toFixed(2));
         subtotal += sub;
         itensCalculados.push({

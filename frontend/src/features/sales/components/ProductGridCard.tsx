@@ -3,7 +3,7 @@ import { ImageOff, Minus, Plus, TriangleAlert } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn, formatCurrency } from '@/lib/utils';
 import { usePdvCart } from '@/stores/pdv-cart.store';
-import type { Product } from '../../products/api/products.api';
+import { precoEfetivo, type Product } from '../../products/api/products.api';
 
 const UNIDADE_LABEL: Record<string, string> = {
   UN: 'un.',
@@ -15,11 +15,8 @@ const UNIDADE_LABEL: Record<string, string> = {
 
 /**
  * Cartão de produto em formato de grade (estilo Square/iFood) — substitui a
- * antiga busca-e-limpa por um toque direto no produto. O preço mostrado é
- * sempre `precoVenda`: não exibimos preço promocional aqui porque a venda do
- * PDV ainda cobra por `precoVenda` (o cálculo promocional é exclusivo do
- * catálogo do cliente) — mostrar um risco de desconto que não é aplicado no
- * caixa confundiria o operador.
+ * antiga busca-e-limpa por um toque direto no produto. Mostra o preço que o
+ * caixa vai realmente cobrar, com o valor cheio riscado quando há promoção.
  */
 export function ProductGridCard({ produto }: { produto: Product }) {
   const item = usePdvCart((s) => s.items.find((i) => i.product.id === produto.id));
@@ -29,6 +26,8 @@ export function ProductGridCard({ produto }: { produto: Product }) {
   const [pulsando, setPulsando] = useState(false);
 
   const semEstoque = produto.estoque <= 0;
+  const preco = precoEfetivo(produto);
+  const emPromocao = preco < produto.precoVenda;
 
   const handleAdd = () => {
     if (semEstoque) return;
@@ -76,10 +75,15 @@ export function ProductGridCard({ produto }: { produto: Product }) {
         <p className="line-clamp-2 text-sm font-medium leading-tight">{produto.nome}</p>
         <div className="mt-auto flex items-end justify-between gap-1">
           <p className="font-semibold text-brand-gold">
-            {formatCurrency(produto.precoVenda)}
+            {formatCurrency(preco)}
             <span className="ml-1 text-[10px] font-normal text-muted-foreground">
               /{UNIDADE_LABEL[produto.unidade] ?? produto.unidade.toLowerCase()}
             </span>
+            {emPromocao && (
+              <span className="ml-1.5 text-[10px] font-normal text-muted-foreground line-through">
+                {formatCurrency(produto.precoVenda)}
+              </span>
+            )}
           </p>
         </div>
 
