@@ -2,18 +2,21 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
-const cardVariants = cva('rounded-lg border bg-card text-card-foreground shadow-sm', {
-  variants: {
-    variant: {
-      default: '',
-      // Cartões clicáveis (ex.: grade de produtos do PDV) — leve elevação e
-      // "arqueamento" no hover/active para dar retorno tátil em telas touch.
-      interactive:
-        'cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm',
+const cardVariants = cva(
+  'rounded-card border border-edge-soft bg-card text-card-foreground shadow-soft',
+  {
+    variants: {
+      variant: {
+        default: '',
+        // Cartões clicáveis (ex.: grade de produtos do PDV) — leve elevação e
+        // "arqueamento" no hover/active para dar retorno tátil em telas touch.
+        interactive:
+          'cursor-pointer transition-all duration-200 ease-fluid hover:-translate-y-0.5 hover:shadow-lift active:translate-y-0 active:shadow-soft',
+      },
     },
+    defaultVariants: { variant: 'default' },
   },
-  defaultVariants: { variant: 'default' },
-});
+);
 
 export interface CardProps
   extends React.HTMLAttributes<HTMLDivElement>,

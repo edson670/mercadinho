@@ -31,7 +31,7 @@ export function Topbar() {
   };
 
   return (
-    <header className="flex h-16 items-center justify-between border-b bg-card/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-card/80 sm:px-6">
+    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-edge-soft bg-card/85 px-4 backdrop-blur-xl sm:px-6">
       <Button
         variant="ghost"
         size="icon"
@@ -44,13 +44,13 @@ export function Topbar() {
       <div className="hidden md:block" />
       <div className="flex items-center gap-2 sm:gap-3">
         <ThemeToggle />
-        <div className="flex items-center gap-2 rounded-md border px-2 py-1.5 sm:px-3">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-gold text-xs font-bold text-foreground">
+        <div className="flex items-center gap-2.5 rounded-xl2 bg-foreground/[0.035] px-2 py-1.5 sm:px-2.5">
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-primary to-primary-hover text-[11px] font-bold text-primary-foreground">
             {user ? iniciais(user.nome) : ''}
           </span>
-          <div className="hidden text-right leading-tight sm:block">
-            <p className="text-sm font-medium">{user?.nome}</p>
-            <p className="text-xs text-muted-foreground">
+          <div className="hidden leading-tight sm:block">
+            <p className="text-[12.5px] font-bold">{user?.nome}</p>
+            <p className="text-[11px] text-muted-foreground">
               {user ? roleLabel[user.role] : ''}
             </p>
           </div>

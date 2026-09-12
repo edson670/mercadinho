@@ -2,52 +2,83 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Paleta e profundidade alinhadas ao sistema de Acreditação PADI: fundo
+ * levemente azulado em vez de branco puro, cartão branco sobre ele (a
+ * hierarquia vem da superfície, não de borda pesada), tinta quase preta
+ * com matiz fria e azul de destaque mais saturado.
+ */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 225 28.6% 97.3%;
+    --foreground: 214.7 40.4% 9.2%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 214.7 40.4% 9.2%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 213 74% 39%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 213 74% 39%;
+    --popover-foreground: 214.7 40.4% 9.2%;
+    --primary: 219.6 82.5% 55.3%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214.3 28% 95.1%;
+    --secondary-foreground: 214.7 40.4% 9.2%;
+    --muted: 214.3 28% 95.1%;
+    --muted-foreground: 214.6 12.6% 59.6%;
+    --accent: 219 90.9% 95.7%;
+    --accent-foreground: 219.6 82.5% 55.3%;
+    --destructive: 1.2 65.8% 45.9%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 216 22.7% 91.4%;
+    --input: 216 22.7% 91.4%;
+    --ring: 219.6 82.5% 55.3%;
     --brand-gold: 41 90% 51%;
     --radius: 0.5rem;
+
+    /* Tokens além do shadcn, usados pelo acabamento novo. */
+    --raised: 220 42.9% 98.6%;
+    --edge-soft: 217.5 30.8% 94.9%;
+    --ink-soft: 213.3 14.6% 36.3%;
+    --primary-hover: 219.8 71.6% 45.5%;
+    --ok: 158.6 81.6% 27.6%;
+    --warn: 36.8 90.9% 34.5%;
+
+    --shadow-soft: 0 1px 2px rgb(14 22 33 / 0.04), 0 4px 12px -4px rgb(14 22 33 / 0.06);
+    --shadow-lift: 0 2px 4px rgb(14 22 33 / 0.05), 0 12px 28px -10px rgb(14 22 33 / 0.16);
+    --shadow-glow: 0 0 0 1px rgb(47 111 235 / 0.18), 0 8px 24px -8px rgb(47 111 235 / 0.35);
   }
 
+  /* No escuro o cartão é MAIS claro que o fundo — é o que separa as
+     superfícies quando não há sombra visível. */
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 213 78% 58%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 213 78% 58%;
+    --background: 213.3 29% 6.1%;
+    --foreground: 212.3 37.1% 93.1%;
+    --card: 214.3 25.9% 10.6%;
+    --card-foreground: 212.3 37.1% 93.1%;
+    --popover: 214.3 25.9% 10.6%;
+    --popover-foreground: 212.3 37.1% 93.1%;
+    --primary: 221.5 100% 68.8%;
+    --primary-foreground: 217.5 50% 6.3%;
+    --secondary: 213 23.8% 16.5%;
+    --secondary-foreground: 212.3 37.1% 93.1%;
+    --muted: 213 23.8% 16.5%;
+    --muted-foreground: 212 11.9% 49.4%;
+    --accent: 219.1 46.2% 18.2%;
+    --accent-foreground: 221.5 100% 68.8%;
+    --destructive: 2.1 90.9% 69.8%;
+    --destructive-foreground: 217.5 50% 6.3%;
+    --border: 212.7 22.4% 19.2%;
+    --input: 212.7 22.4% 19.2%;
+    --ring: 221.5 100% 68.8%;
     --brand-gold: 41 90% 56%;
+
+    --raised: 211.8 24.6% 13.5%;
+    --edge-soft: 213 24.4% 16.1%;
+    --ink-soft: 212.1 16.3% 66.3%;
+    --primary-hover: 221.1 100% 75.1%;
+    --ok: 156.1 52.2% 50%;
+    --warn: 38 73.1% 57.6%;
+
+    --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 12px -4px rgb(0 0 0 / 0.4);
+    --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.35), 0 16px 34px -12px rgb(0 0 0 / 0.6);
+    --shadow-glow: 0 0 0 1px rgb(96 145 255 / 0.28), 0 8px 24px -8px rgb(96 145 255 / 0.4);
   }
 }
 
@@ -56,8 +87,27 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
-    font-feature-settings: 'rlig' 1, 'calt' 1;
+    @apply bg-background text-foreground antialiased;
+    /* ss01/cv11 são os ajustes da Plus Jakarta Sans que dão o desenho mais
+       fechado de a/g; o leve negativo no tracking segura os títulos. */
+    font-feature-settings: 'ss01', 'cv11';
+    letter-spacing: -0.006em;
+  }
+
+  /* Números em coluna precisam alinhar: preço, quantidade, total. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Quem prefere menos movimento não recebe nenhum. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

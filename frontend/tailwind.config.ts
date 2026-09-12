@@ -46,20 +46,52 @@ const config: Config = {
           foreground: 'hsl(var(--card-foreground))',
         },
         'brand-gold': 'hsl(var(--brand-gold))',
+        raised: 'hsl(var(--raised))',
+        'edge-soft': 'hsl(var(--edge-soft))',
+        'ink-soft': 'hsl(var(--ink-soft))',
+        'primary-hover': 'hsl(var(--primary-hover))',
+        ok: 'hsl(var(--ok))',
+        warn: 'hsl(var(--warn))',
       },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+        // Raios maiores do sistema da acreditação: cartão e controles.
+        xl2: '14px',
+        card: '18px',
+      },
+      boxShadow: {
+        soft: 'var(--shadow-soft)',
+        lift: 'var(--shadow-lift)',
+        glow: 'var(--shadow-glow)',
       },
       fontFamily: {
         sans: [
-          'Inter Variable',
+          'Plus Jakarta Sans Variable',
           'ui-sans-serif',
           'system-ui',
           '-apple-system',
           'sans-serif',
         ],
+        mono: ['JetBrains Mono Variable', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+      },
+      keyframes: {
+        fadeUp: {
+          '0%': { opacity: '0', transform: 'translateY(6px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
+      },
+      animation: {
+        fadeUp: 'fadeUp .32s cubic-bezier(.22,.8,.3,1) both',
+        shimmer: 'shimmer 1.6s linear infinite',
+      },
+      transitionTimingFunction: {
+        fluid: 'cubic-bezier(.22,.8,.3,1)',
       },
     },
   },
