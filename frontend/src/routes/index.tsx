@@ -48,6 +48,9 @@ const SalesHistoryPage = lazy(() =>
   import('@/features/sales/pages/SalesHistoryPage').then((m) => ({ default: m.SalesHistoryPage })),
 );
 const CreditPage = lazy(() => import('@/features/credit/pages/CreditPage').then((m) => ({ default: m.CreditPage })));
+const PayablesPage = lazy(() =>
+  import('@/features/payables/pages/PayablesPage').then((m) => ({ default: m.PayablesPage })),
+);
 const WhatsAppOrdersPage = lazy(() =>
   import('@/features/orders/pages/WhatsAppOrdersPage').then((m) => ({ default: m.WhatsAppOrdersPage })),
 );
@@ -97,6 +100,7 @@ export const router = createBrowserRouter([
           { path: '/estoque', element: lazyPage(StockPage) },
           { path: '/fornecedores', element: lazyPage(SuppliersPage) },
           { path: '/compras', element: lazyPage(PurchasesPage) },
+          { path: '/contas-pagar', element: lazyPage(PayablesPage) },
           { path: '/relatorios', element: lazyPage(ReportsPage) },
         ],
       },

@@ -9,6 +9,7 @@ import {
   ShoppingCart,
   MessageCircle,
   ScrollText,
+  ReceiptText,
   HandCoins,
   Wallet,
   BarChart3,
@@ -82,6 +83,7 @@ export const navGroups: NavGroup[] = [
   {
     titulo: 'Gestão',
     itens: [
+      { label: 'Contas a pagar', to: '/contas-pagar', icon: ReceiptText, roles: GESTAO },
       { label: 'Relatórios', to: '/relatorios', icon: BarChart3, roles: GESTAO },
       { label: 'Usuários', to: '/usuarios', icon: Users, roles: ADMIN },
       { label: 'Auditoria', to: '/auditoria', icon: ShieldCheck, roles: GESTAO },

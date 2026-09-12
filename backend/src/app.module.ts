@@ -20,6 +20,7 @@ import { PurchasesModule } from './modules/purchases/purchases.module';
 import { CashRegisterModule } from './modules/cash-register/cash-register.module';
 import { SalesModule } from './modules/sales/sales.module';
 import { CreditModule } from './modules/credit/credit.module';
+import { PayablesModule } from './modules/payables/payables.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { AuditModule } from './modules/audit/audit.module';
@@ -50,6 +51,7 @@ import { LgpdModule } from './modules/lgpd/lgpd.module';
     CashRegisterModule,
     SalesModule,
     CreditModule,
+    PayablesModule,
     DashboardModule,
     ReportsModule,
     AuditModule,

@@ -62,6 +62,28 @@ enum StatusFiado {
   QUITADO
 }
 
+enum StatusContaPagar {
+  ABERTA
+  PARCIAL
+  PAGA
+  CANCELADA
+}
+
+/// Classificação da despesa — é o que permite responder "para onde foi o
+/// dinheiro no mês", que é o motivo de existir o módulo.
+enum CategoriaDespesa {
+  FORNECEDOR
+  ALUGUEL
+  ENERGIA
+  AGUA
+  INTERNET_TELEFONE
+  SALARIOS
+  IMPOSTOS
+  MANUTENCAO
+  TRANSPORTE
+  OUTROS
+}
+
 enum StatusCaixa {
   ABERTO
   FECHADO
@@ -141,6 +163,8 @@ model Usuario {
   movimentacoesEstoque  MovimentacaoEstoque[]
   movimentacoesCaixa    MovimentacaoCaixa[]
   pagamentosFiado       PagamentoFiado[]
+  contasPagarCriadas    ContaPagar[]
+  pagamentosContaPagar  PagamentoContaPagar[]
   auditorias            Auditoria[]
   refreshTokens         RefreshToken[]
   historicoPedidos      HistoricoStatusPedido[]
@@ -270,7 +294,8 @@ model Fornecedor {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  compras Compra[]
+  compras      Compra[]
+  contasPagar  ContaPagar[]
 
   @@index([nome])
   @@map("fornecedores")
@@ -395,6 +420,63 @@ model PagamentoFiado {
 
   @@index([fiadoId])
   @@map("pagamentos_fiado")
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CONTAS A PAGAR (financeiro)
+// ══════════════════════════════════════════════════════════════
+
+/// Despesa com vencimento. Mesma mecânica de abatimento do Fiado (valorPago
+/// /saldo/status), mas na direção oposta: aqui quem deve é a loja.
+model ContaPagar {
+  id            String           @id @default(uuid())
+  descricao     String
+  categoria     CategoriaDespesa @default(OUTROS)
+
+  fornecedorId  String?
+  fornecedor    Fornecedor?      @relation(fields: [fornecedorId], references: [id])
+
+  valorOriginal Decimal          @db.Decimal(10, 2)
+  valorPago     Decimal          @default(0) @db.Decimal(10, 2)
+  saldo         Decimal          @db.Decimal(10, 2) // valorOriginal - valorPago
+  status        StatusContaPagar @default(ABERTA)
+
+  vencimento    DateTime         @db.Date
+  observacoes   String?
+
+  /// Contas criadas juntas por repetição mensal compartilham este id, para
+  /// dar conta das futuras de uma vez (cancelar, reajustar) sem caçar uma a uma.
+  grupoRecorrencia String?
+
+  criadoPorId   String
+  criadoPor     Usuario          @relation(fields: [criadoPorId], references: [id])
+
+  criadoEm      DateTime         @default(now())
+  atualizadoEm  DateTime         @updatedAt
+
+  pagamentos    PagamentoContaPagar[]
+
+  // A consulta que mais roda é "em aberto por vencimento" (atrasadas e a vencer).
+  @@index([status, vencimento])
+  @@index([vencimento])
+  @@index([fornecedorId])
+  @@index([grupoRecorrencia])
+  @@map("contas_pagar")
+}
+
+model PagamentoContaPagar {
+  id             String         @id @default(uuid())
+  contaId        String
+  conta          ContaPagar     @relation(fields: [contaId], references: [id], onDelete: Cascade)
+  usuarioId      String
+  usuario        Usuario        @relation(fields: [usuarioId], references: [id])
+  valor          Decimal        @db.Decimal(10, 2)
+  formaPagamento FormaPagamento
+  observacoes    String?
+  data           DateTime       @default(now())
+
+  @@index([contaId])
+  @@map("pagamentos_conta_pagar")
 }
 
 // ══════════════════════════════════════════════════════════════
