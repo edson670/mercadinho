@@ -13,7 +13,7 @@ export class ListUsersUseCase {
       skip: query.skip,
       take: query.limit,
       search: query.search,
-      orderBy: query.orderBy('criadoEm', 'desc') as Record<string, 'asc' | 'desc'>,
+      orderBy: query.orderBy('criadoEm', 'desc', ['nome', 'email', 'ultimoLogin', 'criadoEm']),
     });
 
     return new PaginatedResponseDto(

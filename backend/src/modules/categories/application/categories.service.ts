@@ -11,9 +11,7 @@ import {
 
 @Injectable()
 export class CategoriesService {
-  constructor(
-    @Inject(CATEGORY_REPOSITORY) private readonly repo: ICategoryRepository,
-  ) {}
+  constructor(@Inject(CATEGORY_REPOSITORY) private readonly repo: ICategoryRepository) {}
 
   async create(dto: CreateCategoryDto): Promise<CategoryResponseDto> {
     if (await this.repo.findByNome(dto.nome)) {
@@ -29,7 +27,7 @@ export class CategoriesService {
       take: query.limit,
       search: query.search,
       ativo: query.ativo,
-      orderBy: query.orderBy('nome', 'asc') as Record<string, 'asc' | 'desc'>,
+      orderBy: query.orderBy('nome', 'asc', ['nome', 'criadoEm']),
     });
     return new PaginatedResponseDto(
       data.map(CategoryResponseDto.fromEntity),

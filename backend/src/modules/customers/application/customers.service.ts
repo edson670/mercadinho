@@ -34,7 +34,7 @@ export class CustomersService {
       take: query.limit,
       search: query.search,
       ativo: query.ativo,
-      orderBy: query.orderBy('nome', 'asc') as Record<string, 'asc' | 'desc'>,
+      orderBy: query.orderBy('nome', 'asc', ['nome', 'criadoEm']),
     });
     return new PaginatedResponseDto(
       data.map(CustomerResponseDto.fromEntity),

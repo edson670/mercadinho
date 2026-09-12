@@ -1,7 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PaginatedResponseDto } from '@core/common/dto/paginated-response.dto';
 import { ConflictError, NotFoundError } from '@core/errors/domain.errors';
-import { CATEGORY_REPOSITORY, ICategoryRepository } from '@modules/categories/domain/category.repository';
+import {
+  CATEGORY_REPOSITORY,
+  ICategoryRepository,
+} from '@modules/categories/domain/category.repository';
 import { IProductRepository, PRODUCT_REPOSITORY } from '../domain/product.repository';
 import {
   CreateProductDto,
@@ -49,7 +52,7 @@ export class ProductsService {
       search: query.search,
       categoriaId: query.categoriaId,
       ativo: query.ativo,
-      orderBy: query.orderBy('nome', 'asc') as Record<string, 'asc' | 'desc'>,
+      orderBy: query.orderBy('nome', 'asc', ['nome', 'precoVenda', 'estoque', 'criadoEm']),
     });
     return new PaginatedResponseDto(
       data.map(ProductResponseDto.fromEntity),
