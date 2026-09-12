@@ -89,7 +89,20 @@ export function PdvPage() {
         return;
       }
       if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
-        if (document.activeElement instanceof HTMLTextAreaElement) return;
+        // Enter só finaliza com o foco FORA de um campo. Um leitor de código de
+        // barras digita o código e manda Enter: se o atalho valesse dentro da
+        // busca, a venda fecharia antes de o produto entrar no carrinho. Vale
+        // igual para desconto e quantidade — Enter ali é "confirmei o que
+        // digitei", não "encerrei a venda".
+        const alvo = document.activeElement;
+        if (
+          alvo instanceof HTMLInputElement ||
+          alvo instanceof HTMLTextAreaElement ||
+          alvo instanceof HTMLSelectElement ||
+          (alvo instanceof HTMLElement && alvo.isContentEditable)
+        ) {
+          return;
+        }
         if (createSale.isPending || items.length === 0) return;
         e.preventDefault();
         handleFinalize();
