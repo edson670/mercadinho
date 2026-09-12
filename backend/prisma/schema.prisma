@@ -409,10 +409,15 @@ model Caixa {
 
   valorAbertura   Decimal     @db.Decimal(10, 2)
   valorFechamento Decimal?    @db.Decimal(10, 2)
-  // valores consolidados no fechamento
+  // Valores consolidados no fechamento. São um retrato do momento da
+  // conferência, não uma view: recalcular depois faria o saldo esperado (e a
+  // diferença apurada) de um caixa já conferido mudar sozinho quando uma
+  // venda antiga fosse cancelada.
   totalVendas     Decimal?    @db.Decimal(10, 2)
   totalSangrias   Decimal?    @db.Decimal(10, 2)
   totalSuprimentos Decimal?   @db.Decimal(10, 2)
+  vendasDinheiro  Decimal?    @db.Decimal(10, 2)
+  saldoEsperado   Decimal?    @db.Decimal(10, 2)
   observacoes     String?
 
   abertoEm        DateTime    @default(now())
@@ -565,6 +570,8 @@ model MensagemWhatsApp {
   conteudo    String
   statusEnvio StatusEnvioMensagem @default(PENDENTE)
   erro        String?
+  /** Quantas vezes já tentamos entregar — limita o reenvio automático. */
+  tentativas  Int                 @default(0)
   criadoEm    DateTime            @default(now())
 
   @@index([telefone])

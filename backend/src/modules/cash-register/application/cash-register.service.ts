@@ -76,6 +76,8 @@ export class CashRegisterService {
         totalVendas: totais.totalVendas,
         totalSangrias: totais.totalSangrias,
         totalSuprimentos: totais.totalSuprimentos,
+        vendasDinheiro: totais.vendasDinheiro,
+        saldoEsperado: totais.saldoEsperado,
       },
     });
     return this.toResponse(caixa.id);
@@ -115,7 +117,23 @@ export class CashRegisterService {
     return caixa;
   }
 
+  /**
+   * Caixa fechado devolve o que foi consolidado na conferência; só caixa
+   * aberto é recalculado. Recalcular sempre fazia o saldo esperado e a
+   * diferença de um caixa já fechado e assinado mudarem retroativamente
+   * quando uma venda daquele turno fosse cancelada depois.
+   */
   private async computeTotals(caixa: Caixa): Promise<CashTotalsDto> {
+    if (caixa.status === StatusCaixa.FECHADO && caixa.saldoEsperado !== null) {
+      return {
+        totalVendas: Number(caixa.totalVendas ?? 0),
+        vendasDinheiro: Number(caixa.vendasDinheiro ?? 0),
+        totalSangrias: Number(caixa.totalSangrias ?? 0),
+        totalSuprimentos: Number(caixa.totalSuprimentos ?? 0),
+        saldoEsperado: Number(caixa.saldoEsperado),
+      };
+    }
+
     const [vendasTotal, vendasDinheiro, sangrias, suprimentos] = await Promise.all([
       this.prisma.vendaModel.aggregate({
         where: { caixaId: caixa.id, status: StatusVenda.CONCLUIDA },
