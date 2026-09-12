@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@core/database/prisma.service';
 import { WhatsAppMessengerService } from './whatsapp-messenger.service';
-import { CatalogSessionService } from './catalog-session.service';
+import { CatalogSessionService, VALIDADE_HORAS } from './catalog-session.service';
 import { saudacaoComCatalogo } from './message-templates';
 import { isGroupJid, toNationalDigits } from '../domain/phone.util';
 
@@ -53,7 +53,14 @@ export class HandleIncomingMessageUseCase {
     const empresa = config?.nome ?? 'nosso mercadinho';
 
     const link = await this.sessions.criarLink(telefone, nome);
-    await this.messenger.send(telefone, saudacaoComCatalogo(empresa, link));
+    await this.messenger.send(
+      telefone,
+      saudacaoComCatalogo(empresa, link, {
+        nome,
+        validadeHoras: VALIDADE_HORAS,
+        jaCliente: Boolean(cliente),
+      }),
+    );
 
     this.logger.log(`Saudação enviada para ${telefone}`);
     return { respondido: true };

@@ -87,6 +87,10 @@ export class LgpdService {
 
       if (telefoneAnterior) {
         await tx.mensagemWhatsApp.deleteMany({ where: { telefone: telefoneAnterior } });
+        // A sessão de catálogo também guarda telefone e nome. Deixá-la para
+        // trás anulava a anonimização: bastava o link ainda válido para o
+        // dado voltar a ser atribuível à pessoa.
+        await tx.sessaoCatalogo.deleteMany({ where: { telefone: telefoneAnterior } });
       }
 
       // Pedidos guardam um retrato do endereço/telefone no momento da compra
@@ -122,6 +126,9 @@ export class LgpdService {
       where: { criadoEm: { lt: limite } },
     });
 
-    return { message: `${count} mensagem(ns) com mais de ${dias} dias removida(s).`, removidas: count };
+    return {
+      message: `${count} mensagem(ns) com mais de ${dias} dias removida(s).`,
+      removidas: count,
+    };
   }
 }

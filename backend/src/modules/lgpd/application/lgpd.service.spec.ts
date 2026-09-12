@@ -7,6 +7,7 @@ describe('LgpdService', () => {
   let prisma: {
     cliente: { findUnique: jest.Mock; update: jest.Mock };
     mensagemWhatsApp: { findMany: jest.Mock; deleteMany: jest.Mock };
+    sessaoCatalogo: { deleteMany: jest.Mock };
     pedido: { updateMany: jest.Mock };
     $transaction: jest.Mock;
   };
@@ -17,12 +18,16 @@ describe('LgpdService', () => {
     prisma = {
       cliente: { findUnique: jest.fn(), update: jest.fn() },
       mensagemWhatsApp: { findMany: jest.fn(), deleteMany: jest.fn() },
+      sessaoCatalogo: { deleteMany: jest.fn() },
       pedido: { updateMany: jest.fn() },
       $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)),
     };
     config = { get: jest.fn((_key: string, def?: unknown) => def) };
 
-    service = new LgpdService(prisma as unknown as PrismaService, config as unknown as ConfigService);
+    service = new LgpdService(
+      prisma as unknown as PrismaService,
+      config as unknown as ConfigService,
+    );
   });
 
   describe('exportarCliente', () => {
@@ -85,10 +90,19 @@ describe('LgpdService', () => {
       expect(prisma.cliente.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'c1' },
-          data: expect.objectContaining({ nome: 'Cliente anonimizado', telefone: null, ativo: false }),
+          data: expect.objectContaining({
+            nome: 'Cliente anonimizado',
+            telefone: null,
+            ativo: false,
+          }),
         }),
       );
       expect(prisma.mensagemWhatsApp.deleteMany).toHaveBeenCalledWith({
+        where: { telefone: '11999998888' },
+      });
+      // A sessão de catálogo guarda telefone e nome: sobreviver a ela tornaria
+      // a anonimização reversível.
+      expect(prisma.sessaoCatalogo.deleteMany).toHaveBeenCalledWith({
         where: { telefone: '11999998888' },
       });
       expect(prisma.pedido.updateMany).toHaveBeenCalledWith(
@@ -116,7 +130,10 @@ describe('LgpdService', () => {
       const result = await service.expurgarMensagensAntigas();
 
       expect(config.get).toHaveBeenCalledWith('RETENCAO_MENSAGENS_DIAS', 90);
-      expect(result).toEqual({ message: '3 mensagem(ns) com mais de 90 dias removida(s).', removidas: 3 });
+      expect(result).toEqual({
+        message: '3 mensagem(ns) com mais de 90 dias removida(s).',
+        removidas: 3,
+      });
     });
 
     it('respeita o override explícito de dias', async () => {

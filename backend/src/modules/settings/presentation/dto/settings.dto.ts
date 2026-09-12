@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Configuracao } from '@prisma/client';
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class UpdateSettingsDto {
   @ApiPropertyOptional({ example: 'Meu Mercadinho' })
@@ -23,6 +23,15 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsString()
   telefone?: string;
+
+  @ApiPropertyOptional({
+    example: 'mercadinho@email.com',
+    description: 'Enviada ao cliente na confirmação de pedidos pagos em PIX.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(140)
+  chavePix?: string;
 }
 
 export class SettingsResponseDto {
@@ -32,6 +41,7 @@ export class SettingsResponseDto {
   @ApiProperty({ nullable: true }) endereco!: string | null;
   @ApiProperty({ nullable: true }) telefone!: string | null;
   @ApiProperty({ nullable: true }) logoUrl!: string | null;
+  @ApiProperty({ nullable: true }) chavePix!: string | null;
   @ApiProperty() atualizadoEm!: Date;
 
   static fromEntity(c: Configuracao): SettingsResponseDto {
@@ -42,6 +52,7 @@ export class SettingsResponseDto {
       endereco: c.endereco,
       telefone: c.telefone,
       logoUrl: c.logoUrl,
+      chavePix: c.chavePix,
       atualizadoEm: c.atualizadoEm,
     };
   }

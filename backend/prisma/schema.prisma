@@ -479,6 +479,9 @@ model Configuracao {
   endereco     String?
   telefone     String?
   logoUrl      String?
+  // Enviada ao cliente na confirmação de pedido pago em PIX — sem ela a
+  // mensagem dizia "Pagamento: PIX" e o cliente não tinha como pagar.
+  chavePix     String?
   atualizadoEm DateTime @updatedAt
 
   @@map("configuracoes")
@@ -592,5 +595,8 @@ model SessaoCatalogo {
   expiraEm DateTime
   criadoEm DateTime @default(now())
 
+  // Reaproveitamento do link ainda válido e expurgo das vencidas.
+  @@index([telefone, expiraEm])
+  @@index([expiraEm])
   @@map("sessoes_catalogo")
 }

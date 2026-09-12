@@ -17,6 +17,7 @@ const schema = z.object({
   cnpj: z.string().optional(),
   endereco: z.string().optional(),
   telefone: z.string().optional(),
+  chavePix: z.string().max(140, 'Chave muito longa').optional(),
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -44,6 +45,7 @@ export function SettingsPage() {
         cnpj: data.cnpj ?? '',
         endereco: data.endereco ?? '',
         telefone: data.telefone ?? '',
+        chavePix: data.chavePix ?? '',
       });
     }
   }, [data, reset]);
@@ -54,6 +56,7 @@ export function SettingsPage() {
       cnpj: values.cnpj || undefined,
       endereco: values.endereco || undefined,
       telefone: values.telefone || undefined,
+      chavePix: values.chavePix || undefined,
     });
   };
 
@@ -129,7 +132,9 @@ export function SettingsPage() {
                   <div className="space-y-2">
                     <Label htmlFor="nome">Nome</Label>
                     <Input id="nome" {...register('nome')} />
-                    {errors.nome && <p className="text-xs text-destructive">{errors.nome.message}</p>}
+                    {errors.nome && (
+                      <p className="text-xs text-destructive">{errors.nome.message}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="cnpj">CNPJ</Label>
@@ -142,6 +147,21 @@ export function SettingsPage() {
                   <div className="space-y-2 sm:col-span-2">
                     <Label htmlFor="endereco">Endereço</Label>
                     <Input id="endereco" {...register('endereco')} />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="chavePix">Chave PIX</Label>
+                    <Input
+                      id="chavePix"
+                      placeholder="CPF/CNPJ, e-mail, telefone ou chave aleatória"
+                      {...register('chavePix')}
+                    />
+                    {errors.chavePix ? (
+                      <p className="text-xs text-destructive">{errors.chavePix.message}</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Enviada ao cliente na confirmação de pedidos pagos em PIX pelo WhatsApp.
+                      </p>
+                    )}
                   </div>
                 </div>
                 <Button type="submit" disabled={updateMutation.isPending}>

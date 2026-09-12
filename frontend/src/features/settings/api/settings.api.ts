@@ -7,6 +7,7 @@ export interface CompanySettings {
   endereco: string | null;
   telefone: string | null;
   logoUrl: string | null;
+  chavePix: string | null;
   atualizadoEm: string;
 }
 
@@ -15,6 +16,7 @@ export interface UpdateSettingsPayload {
   cnpj?: string;
   endereco?: string;
   telefone?: string;
+  chavePix?: string;
 }
 
 export interface Branding {
