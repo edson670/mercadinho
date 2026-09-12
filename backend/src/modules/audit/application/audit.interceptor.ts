@@ -12,6 +12,16 @@ import { PrismaService } from '@core/database/prisma.service';
 import { AuthUser } from '@core/auth/current-user.decorator';
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+/**
+ * Chaves removidas antes de gravar na auditoria. Vale tanto para o corpo da
+ * requisição quanto para a RESPOSTA — é a resposta que carrega os segredos do
+ * MFA: `/auth/mfa/setup` devolve o segredo TOTP em claro (`manualEntryKey`, e
+ * o mesmo segredo embutido no `qrCodeDataUrl`) e `/auth/mfa/enable` devolve os
+ * códigos de recuperação. Eles são cifrados/hasheados na tabela de usuários
+ * justamente para ninguém conseguir lê-los; sem esta lista iam parar em texto
+ * puro na auditoria, que ADMINISTRADOR e GERENTE consultam pela interface —
+ * bastaria abrir o registro para clonar o segundo fator de outra pessoa.
+ */
 const SENSITIVE_KEYS = new Set([
   'senha',
   'senhaHash',
@@ -20,6 +30,14 @@ const SENSITIVE_KEYS = new Set([
   'refreshToken',
   'accessToken',
   'resetToken',
+  'codigo',
+  'mfaToken',
+  'mfaSecret',
+  'mfaSecretCifrado',
+  'manualEntryKey',
+  'qrCodeDataUrl',
+  'recoveryCodes',
+  'mfaRecoveryCodesJson',
 ]);
 
 /**
