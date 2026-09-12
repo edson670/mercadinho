@@ -190,29 +190,18 @@ export function PdvPage() {
         </div>
       )}
 
-      {/* Três painéis: produtos, a lista que o leitor alimenta e o total.
-          A lista saiu de baixo da grade para ficar colada no total — é onde
-          o olho do operador precisa estar durante o atendimento. */}
-      <div className="grid gap-4 md:grid-cols-12">
-        {/* Produtos */}
-        <div className="md:col-span-12 xl:col-span-5">
-          <Card>
-            <CardContent className="pt-6">
-              <ProductGrid />
-            </CardContent>
-          </Card>
-        </div>
-
+      {/* A venda em andamento ocupa a faixa de cima: a lista que o leitor
+          alimenta e, ao lado, o total. A grade de produtos ficou embaixo —
+          é o caminho secundário (item sem código de barras), e dividir a
+          largura com ela espremia o total a ponto de os botões de pagamento
+          se sobreporem. */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(330px,390px)]">
         {/* Lista lida pelo leitor */}
-        <div className="md:col-span-7 xl:col-span-4">
-          <div className="md:sticky md:top-4">
-            <CartList className="md:max-h-[calc(100vh-2rem)]" />
-          </div>
-        </div>
+        <CartList className="lg:max-h-[65vh]" />
 
         {/* Total + pagamento */}
-        <div className="md:col-span-5 xl:col-span-3">
-          <Card className="sticky top-4">
+        <div>
+          <Card className="lg:sticky lg:top-4">
             <CardContent className="space-y-4 pt-6">
               {/* O número que o operador e o cliente olham. Bloco cheio e
                   grande de propósito: era uma linha discreta no meio do
@@ -270,10 +259,14 @@ export function PdvPage() {
                           : 'hover:bg-accent',
                       )}
                     >
-                      <span className="flex items-center gap-2">
-                        <Icon className="h-4 w-4" /> {label}
+                      {/* `min-w-0` + `truncate`: sem isso o rótulo empurrava
+                          o atalho para fora do botão e os dois se
+                          sobrepunham quando a coluna estreitava. */}
+                      <span className="flex min-w-0 items-center gap-2">
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{label}</span>
                       </span>
-                      <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                      <kbd className="shrink-0 rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
                         {atalho}
                       </kbd>
                     </button>
@@ -324,6 +317,13 @@ export function PdvPage() {
           </Card>
         </div>
       </div>
+
+      {/* Produtos: busca, leitor e escolha por toque. */}
+      <Card>
+        <CardContent className="pt-6">
+          <ProductGrid />
+        </CardContent>
+      </Card>
 
       {comprovante && <SaleReceipt venda={comprovante} />}
     </div>

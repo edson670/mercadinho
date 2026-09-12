@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2, PackageSearch, ScanLine, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,6 +20,16 @@ export function ProductGrid() {
   const debouncedSearch = useDebounce(search, 300);
   const addItem = usePdvCart((s) => s.addItem);
   const buscaRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * O leitor precisa do campo focado, mas o `autoFocus` do HTML rola a
+   * página até ele — e a grade agora fica abaixo da venda, então a tela
+   * abriria já rolada, com o total fora de vista. `preventScroll` dá o foco
+   * sem mexer no scroll.
+   */
+  useEffect(() => {
+    buscaRef.current?.focus({ preventScroll: true });
+  }, []);
 
   /**
    * Um leitor de código de barras se comporta como teclado: digita o código
@@ -47,7 +57,7 @@ export function ProductGrid() {
       toast.success(`${produto.nome} adicionado.`);
       // Limpa para o próximo bipe já cair num campo vazio.
       setSearch('');
-      buscaRef.current?.focus();
+      buscaRef.current?.focus({ preventScroll: true });
     } finally {
       setBipando(false);
     }
@@ -80,7 +90,6 @@ export function ProductGrid() {
           }}
           placeholder="Bipe o código de barras ou busque por nome..."
           className="pl-9 pr-9"
-          autoFocus
         />
         {bipando ? (
           <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
@@ -113,8 +122,10 @@ export function ProductGrid() {
         </div>
       )}
 
+      {/* A grade ocupa a largura toda agora; cabe mais uma coluna sem
+          apertar o cartão. */}
       {!isLoading && data && data.data.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {data.data.map((produto) => (
             <ProductGridCard key={produto.id} produto={produto} />
           ))}
