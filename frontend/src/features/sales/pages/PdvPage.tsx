@@ -1,10 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Trash2,
-  Minus,
-  Plus,
-  ShoppingCart,
   Loader2,
   Banknote,
   QrCode,
@@ -19,22 +15,27 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ProductGrid } from '../components/ProductGrid';
+import { CartList } from '../components/CartList';
 import { SaleReceipt, useComprovante } from '../components/SaleReceipt';
 import { CustomerSearchSelect } from '@/features/customers/components/CustomerSearchSelect';
 import { useCurrentCash } from '@/features/cash-register/api/use-cash-register';
 import { useActiveOrdersCount } from '@/features/orders/api/use-orders';
 import { usePdvCart } from '@/stores/pdv-cart.store';
-import { precoEfetivo } from '@/features/products/api/products.api';
 import { formatCurrency, formatDateTime, cn } from '@/lib/utils';
 import { toast } from '@/stores/toast.store';
 import type { Customer } from '@/features/customers/api/customers.api';
 import type { FormaPagamento } from '../api/sales.api';
 import { useCreateSale } from '../api/use-sales';
 
-const paymentOptions: { value: FormaPagamento; label: string; icon: typeof Banknote; atalho: string }[] = [
+const paymentOptions: {
+  value: FormaPagamento;
+  label: string;
+  icon: typeof Banknote;
+  atalho: string;
+}[] = [
   { value: 'DINHEIRO', label: 'Dinheiro', icon: Banknote, atalho: 'Shift+2' },
   { value: 'PIX', label: 'PIX', icon: QrCode, atalho: 'Shift+3' },
   { value: 'CARTAO', label: 'Cartão', icon: CreditCard, atalho: 'Shift+1' },
@@ -54,7 +55,9 @@ const ATALHO_PAGAMENTO: Record<string, FormaPagamento> = {
 
 export function PdvPage() {
   const navigate = useNavigate();
-  const { items, setQty, removeItem, desconto, setDesconto, clear, subtotal, total } = usePdvCart();
+  // A manipulação de quantidade/remoção mora no CartList, que é quem desenha
+  // as linhas — aqui só interessa o que compõe o total.
+  const { items, desconto, setDesconto, clear, subtotal, total } = usePdvCart();
   // `isPending` importa: enquanto a consulta não responde, `caixa` é
   // undefined e o alerta de "nenhum caixa aberto" aparecia por um instante
   // mesmo com o caixa aberto — o operador via um aviso falso a cada carga da
@@ -150,9 +153,15 @@ export function PdvPage() {
           </span>
           <MessageCircle className="h-4 w-4 text-destructive" />
           <span className="text-destructive">
-            {pedidosNovos} {pedidosNovos === 1 ? 'pedido novo' : 'pedidos novos'} pelo WhatsApp aguardando separação.
+            {pedidosNovos} {pedidosNovos === 1 ? 'pedido novo' : 'pedidos novos'} pelo WhatsApp
+            aguardando separação.
           </span>
-          <Button size="sm" variant="destructive" className="ml-auto" onClick={() => navigate('/pedidos-whatsapp')}>
+          <Button
+            size="sm"
+            variant="destructive"
+            className="ml-auto"
+            onClick={() => navigate('/pedidos-whatsapp')}
+          >
             Ver pedidos
           </Button>
         </div>
@@ -162,7 +171,12 @@ export function PdvPage() {
         <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
           <AlertTriangle className="h-4 w-4" />
           Nenhum caixa aberto. Abra o caixa antes de finalizar vendas.
-          <Button size="sm" variant="outline" className="ml-auto" onClick={() => navigate('/caixa')}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="ml-auto"
+            onClick={() => navigate('/caixa')}
+          >
             Abrir caixa
           </Button>
         </div>
@@ -171,95 +185,57 @@ export function PdvPage() {
       {caixa && (
         <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
           <CircleCheck className="h-4 w-4" />
-          Caixa aberto {caixa.usuarioNome ? `por ${caixa.usuarioNome} ` : ''}desde {formatDateTime(caixa.abertoEm)} ·
-          Abertura: {formatCurrency(caixa.valorAbertura)}
+          Caixa aberto {caixa.usuarioNome ? `por ${caixa.usuarioNome} ` : ''}desde{' '}
+          {formatDateTime(caixa.abertoEm)} · Abertura: {formatCurrency(caixa.valorAbertura)}
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* Grade de produtos + carrinho */}
-        <div className="space-y-4 lg:col-span-2">
+      {/* Três painéis: produtos, a lista que o leitor alimenta e o total.
+          A lista saiu de baixo da grade para ficar colada no total — é onde
+          o olho do operador precisa estar durante o atendimento. */}
+      <div className="grid gap-4 md:grid-cols-12">
+        {/* Produtos */}
+        <div className="md:col-span-12 xl:col-span-5">
           <Card>
             <CardContent className="pt-6">
               <ProductGrid />
             </CardContent>
           </Card>
-
-          {items.length > 0 && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <ShoppingCart className="h-4 w-4" /> Itens ({items.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-0 p-0">
-                <div className="divide-y">
-                  {items.map((item) => (
-                    <div key={item.product.id} className="flex items-center gap-3 px-4 py-2.5">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{item.product.nome}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatCurrency(precoEfetivo(item.product))} · {item.product.unidade}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => setQty(item.product.id, item.quantidade - 1)}
-                          disabled={item.quantidade <= 1}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <Input
-                          className="h-7 w-14 text-center"
-                          type="number"
-                          step="0.001"
-                          value={item.quantidade}
-                          onChange={(e) => setQty(item.product.id, Number(e.target.value) || 1)}
-                        />
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => setQty(item.product.id, item.quantidade + 1)}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                      </div>
-                      <div className="w-20 text-right text-sm font-medium">
-                        {formatCurrency(precoEfetivo(item.product) * item.quantidade)}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive"
-                        onClick={() => removeItem(item.product.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
 
-        {/* Resumo + pagamento */}
-        <div>
+        {/* Lista lida pelo leitor */}
+        <div className="md:col-span-7 xl:col-span-4">
+          <div className="md:sticky md:top-4">
+            <CartList className="md:max-h-[calc(100vh-2rem)]" />
+          </div>
+        </div>
+
+        {/* Total + pagamento */}
+        <div className="md:col-span-5 xl:col-span-3">
           <Card className="sticky top-4">
-            <CardHeader>
-              <CardTitle className="text-base">Resumo</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>{formatCurrency(sub)}</span>
+            <CardContent className="space-y-4 pt-6">
+              {/* O número que o operador e o cliente olham. Bloco cheio e
+                  grande de propósito: era uma linha discreta no meio do
+                  resumo, com o mesmo peso do subtotal. */}
+              <div className="rounded-card bg-gradient-to-br from-primary to-primary-hover p-4 text-primary-foreground shadow-glow">
+                <p className="text-[11px] font-bold uppercase tracking-[.14em] opacity-80">
+                  Total a pagar
+                </p>
+                <p className="tabular mt-1 text-[38px] font-extrabold leading-none tracking-[-.02em]">
+                  {formatCurrency(tot)}
+                </p>
+                <p className="mt-2 text-[11.5px] font-medium opacity-80">
+                  {items.length === 0
+                    ? 'Nenhum item'
+                    : `${items.length} ${items.length === 1 ? 'produto' : 'produtos'} · subtotal ${formatCurrency(sub)}`}
+                  {desconto > 0 && ` · desconto −${formatCurrency(desconto)}`}
+                </p>
               </div>
+
               <div className="space-y-1">
-                <Label htmlFor="desconto" className="text-xs">Desconto (R$)</Label>
+                <Label htmlFor="desconto" className="text-xs">
+                  Desconto (R$)
+                </Label>
                 {/* Limitado ao subtotal na própria digitação: o backend
                     recusa desconto maior que o subtotal, e sem o limite a
                     tela mostrava Total R$ 0,00 e só acusava o erro no clique
@@ -274,14 +250,8 @@ export function PdvPage() {
                   onChange={(e) => setDesconto(Math.min(Number(e.target.value) || 0, sub))}
                 />
                 {desconto >= sub && sub > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Desconto limitado ao subtotal.
-                  </p>
+                  <p className="text-xs text-muted-foreground">Desconto limitado ao subtotal.</p>
                 )}
-              </div>
-              <div className="flex items-center justify-between rounded-md bg-primary/5 px-3 py-3">
-                <span className="text-sm font-medium text-muted-foreground">Total</span>
-                <span className="text-2xl font-bold text-primary">{formatCurrency(tot)}</span>
               </div>
 
               {/* Forma de pagamento */}

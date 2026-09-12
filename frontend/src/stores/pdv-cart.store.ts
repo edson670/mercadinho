@@ -7,9 +7,20 @@ export interface CartItem {
   quantidade: number;
 }
 
+/**
+ * Último item que entrou no carrinho. O `em` existe para o mesmo produto
+ * bipado duas vezes seguidas contar como dois eventos — sem ele a lista não
+ * reagiria à segunda leitura.
+ */
+export interface UltimoBipe {
+  produtoId: string;
+  em: number;
+}
+
 interface PdvCartState {
   items: CartItem[];
   desconto: number;
+  ultimoBipe: UltimoBipe | null;
   addItem: (product: Product) => void;
   setQty: (produtoId: string, quantidade: number) => void;
   removeItem: (produtoId: string) => void;
@@ -30,18 +41,21 @@ export const usePdvCart = create<PdvCartState>()(
     (set, get) => ({
       items: [],
       desconto: 0,
+      ultimoBipe: null,
 
       addItem: (product) =>
         set((state) => {
+          const ultimoBipe = { produtoId: product.id, em: Date.now() };
           const existing = state.items.find((i) => i.product.id === product.id);
           if (existing) {
             return {
+              ultimoBipe,
               items: state.items.map((i) =>
                 i.product.id === product.id ? { ...i, quantidade: i.quantidade + 1 } : i,
               ),
             };
           }
-          return { items: [...state.items, { product, quantidade: 1 }] };
+          return { ultimoBipe, items: [...state.items, { product, quantidade: 1 }] };
         }),
 
       setQty: (produtoId, quantidade) =>
@@ -54,11 +68,13 @@ export const usePdvCart = create<PdvCartState>()(
       removeItem: (produtoId) =>
         set((state) => ({
           items: state.items.filter((i) => i.product.id !== produtoId),
+          // Some o destaque junto com a linha destacada.
+          ultimoBipe: state.ultimoBipe?.produtoId === produtoId ? null : state.ultimoBipe,
         })),
 
       setDesconto: (valor) => set({ desconto: Math.max(0, valor) }),
 
-      clear: () => set({ items: [], desconto: 0 }),
+      clear: () => set({ items: [], desconto: 0, ultimoBipe: null }),
 
       subtotal: () =>
         get().items.reduce((acc, i) => acc + precoEfetivo(i.product) * i.quantidade, 0),
