@@ -66,7 +66,16 @@ export class WhatsAppMessengerService {
   async respondeuRecentemente(telefone: string, janelaMinutos = 5): Promise<boolean> {
     const desde = new Date(Date.now() - janelaMinutos * 60_000);
     const recente = await this.prisma.mensagemWhatsApp.findFirst({
-      where: { telefone, direcao: DirecaoMensagem.ENVIADA, criadoEm: { gte: desde } },
+      where: {
+        telefone,
+        direcao: DirecaoMensagem.ENVIADA,
+        criadoEm: { gte: desde },
+        // Só saudações contam. Notificação de pedido tem pedidoId e é
+        // disparada pela loja, não em resposta ao cliente: incluí-la fazia um
+        // "saiu para entrega" calar o link do catálogo por 5 minutos para
+        // quem escrevesse logo em seguida.
+        pedidoId: null,
+      },
       select: { id: true },
     });
     return Boolean(recente);

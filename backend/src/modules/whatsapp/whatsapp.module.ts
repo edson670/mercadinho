@@ -6,6 +6,7 @@ import { LoggingWhatsAppGateway } from './infra/logging-whatsapp.gateway';
 import { WhatsAppMessengerService } from './application/whatsapp-messenger.service';
 import { WhatsAppOrderNotifier } from './application/whatsapp-order-notifier';
 import { CatalogSessionService } from './application/catalog-session.service';
+import { ReenvioMensagensService } from './application/reenvio-mensagens.service';
 import { HandleIncomingMessageUseCase } from './application/handle-incoming-message.use-case';
 import { EvolutionWebhookController } from './presentation/evolution-webhook.controller';
 
@@ -25,6 +26,7 @@ import { EvolutionWebhookController } from './presentation/evolution-webhook.con
     WhatsAppMessengerService,
     WhatsAppOrderNotifier,
     CatalogSessionService,
+    ReenvioMensagensService,
     HandleIncomingMessageUseCase,
   ],
   exports: [WhatsAppOrderNotifier, CatalogSessionService],

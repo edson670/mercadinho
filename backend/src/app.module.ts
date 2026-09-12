@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { validateEnv } from './core/config/env.validation';
 import { PrismaModule } from './core/database/prisma.module';
 import { SecurityModule } from './core/security/security.module';
@@ -33,6 +34,9 @@ import { LgpdModule } from './modules/lgpd/lgpd.module';
       validate: validateEnv,
     }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+    // Habilita os @Cron da aplicação (hoje: reenvio de mensagens WhatsApp
+    // que falharam — ver ReenvioMensagensService).
+    ScheduleModule.forRoot(),
     PrismaModule,
     SecurityModule,
     AuthModule,
