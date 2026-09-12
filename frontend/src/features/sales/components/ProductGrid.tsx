@@ -1,10 +1,13 @@
-import { useState } from 'react';
-import { Loader2, PackageSearch, Search } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Loader2, PackageSearch, ScanLine, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useProducts } from '../../products/api/use-products';
+import { findProductByBarcode } from '../../products/api/products.api';
 import { useAllCategories } from '../../categories/api/use-categories';
+import { usePdvCart } from '@/stores/pdv-cart.store';
+import { toast } from '@/stores/toast.store';
 import { ProductGridCard } from './ProductGridCard';
 
 const TODAS = '__todas__';
@@ -13,7 +16,42 @@ const TODAS = '__todas__';
 export function ProductGrid() {
   const [search, setSearch] = useState('');
   const [categoriaId, setCategoriaId] = useState(TODAS);
+  const [bipando, setBipando] = useState(false);
   const debouncedSearch = useDebounce(search, 300);
+  const addItem = usePdvCart((s) => s.addItem);
+  const buscaRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * Um leitor de código de barras se comporta como teclado: digita o código
+   * e manda Enter. Aqui o Enter tenta a busca exata pelo código e joga o
+   * produto direto no carrinho — sem isto o operador tinha que localizar o
+   * item na grade e clicar, o que anula o ganho de bipar.
+   *
+   * Não achando o código, o termo continua valendo como filtro de texto, que
+   * é o comportamento útil para quem digitou um nome e apertou Enter.
+   */
+  const handleBipe = async () => {
+    const codigo = search.trim();
+    if (!codigo || bipando) return;
+
+    setBipando(true);
+    try {
+      const produto = await findProductByBarcode(codigo);
+      if (!produto) return;
+
+      if (!produto.ativo || produto.estoque <= 0) {
+        toast.error(`${produto.nome} está sem estoque.`);
+        return;
+      }
+      addItem(produto);
+      toast.success(`${produto.nome} adicionado.`);
+      // Limpa para o próximo bipe já cair num campo vazio.
+      setSearch('');
+      buscaRef.current?.focus();
+    } finally {
+      setBipando(false);
+    }
+  };
 
   const { data: categorias } = useAllCategories();
   const { data, isLoading } = useProducts({
@@ -28,11 +66,27 @@ export function ProductGrid() {
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
+          ref={buscaRef}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar produto por nome ou código de barras..."
-          className="pl-9"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              // Não deixa o Enter subir para o atalho global de finalizar
+              // venda do PdvPage.
+              e.preventDefault();
+              e.stopPropagation();
+              void handleBipe();
+            }
+          }}
+          placeholder="Bipe o código de barras ou busque por nome..."
+          className="pl-9 pr-9"
+          autoFocus
         />
+        {bipando ? (
+          <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+        ) : (
+          <ScanLine className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        )}
       </div>
 
       <Tabs value={categoriaId} onValueChange={setCategoriaId}>

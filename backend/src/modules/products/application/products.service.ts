@@ -65,6 +65,19 @@ export class ProductsService {
     return produtos.map(ProductResponseDto.fromEntity);
   }
 
+  /**
+   * Busca exata por código de barras — o que o leitor do PDV precisa.
+   * A busca por texto usa `contains`, então um código pode casar com vários
+   * produtos; para bipar, só serve o produto exato.
+   */
+  async getByCodigoBarras(codigo: string): Promise<ProductResponseDto> {
+    const produto = await this.repo.findByCodigoBarras(codigo.trim());
+    if (!produto) throw new NotFoundError('Produto com código de barras', codigo);
+    // findByCodigoBarras não traz a categoria; recarrega pelo id para
+    // devolver o mesmo formato das outras rotas.
+    return this.get(produto.id);
+  }
+
   async get(id: string): Promise<ProductResponseDto> {
     const produto = await this.repo.findById(id);
     if (!produto) throw new NotFoundError('Produto', id);

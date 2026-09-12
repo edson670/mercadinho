@@ -61,6 +61,16 @@ export async function searchProducts(q: string): Promise<Product[]> {
   return data;
 }
 
+/** Busca exata por código de barras (leitor do PDV). `null` se não existir. */
+export async function findProductByBarcode(codigo: string): Promise<Product | null> {
+  try {
+    const { data } = await apiClient.get(`/products/barcode/${encodeURIComponent(codigo)}`);
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 export async function createProduct(payload: ProductPayload): Promise<Product> {
   const { data } = await apiClient.post('/products', payload);
   return data;

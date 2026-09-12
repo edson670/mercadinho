@@ -38,6 +38,14 @@ export class ProductsController {
     return this.service.search(q);
   }
 
+  // Antes de :id — sem isto o Express casaria "barcode" como um id e o
+  // ParseUUIDPipe rejeitaria a rota.
+  @Get('barcode/:codigo')
+  @ApiOperation({ summary: 'Busca exata por código de barras (leitor do PDV)' })
+  getByBarcode(@Param('codigo') codigo: string) {
+    return this.service.getByCodigoBarras(codigo);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Detalha um produto' })
   get(@Param('id', ParseUUIDPipe) id: string) {
