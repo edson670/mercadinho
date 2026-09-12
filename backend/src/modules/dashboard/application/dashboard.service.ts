@@ -8,7 +8,14 @@ export type ChartPeriod = '7d' | '30d' | '12m';
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async summary() {
+  /**
+   * `completo = false` devolve só o que interessa à operação do balcão.
+   * O caixa vê o dashboard (o item está no menu de todos os perfis), mas
+   * faturamento acumulado, fiado em aberto e número de inadimplentes são a
+   * mesma informação sensível que já é restrita em /sales-chart e
+   * /top-products — não faz sentido barrar lá e liberar aqui.
+   */
+  async summary(completo = true) {
     const now = new Date();
     const inicioHoje = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -68,10 +75,14 @@ export class DashboardService {
       qtdVendasDia: vendasDia._count,
       vendasMes: Number(vendasMes._sum.total ?? 0),
       qtdVendasMes: vendasMes._count,
-      totalFaturado: Number(faturado._sum.total ?? 0),
-      fiadoEmAberto: Number(fiadoAberto._sum.saldo ?? 0),
-      totalRecebidoFiado: Number(recebidoFiado._sum.valor ?? 0),
-      clientesInadimplentes: inadimplentes.length,
+      ...(completo
+        ? {
+            totalFaturado: Number(faturado._sum.total ?? 0),
+            fiadoEmAberto: Number(fiadoAberto._sum.saldo ?? 0),
+            totalRecebidoFiado: Number(recebidoFiado._sum.valor ?? 0),
+            clientesInadimplentes: inadimplentes.length,
+          }
+        : {}),
       produtosEstoqueBaixo,
       ultimasVendas: ultimasVendas.map((v) => ({
         id: v.id,

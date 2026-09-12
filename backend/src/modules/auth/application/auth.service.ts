@@ -23,6 +23,15 @@ const BLOQUEIO_MAX_MS = 30 * 60_000;
 /** Perfis para os quais o frontend deve insistir na ativação do MFA (B4). */
 const ROLES_MFA_RECOMENDADO: Role[] = [Role.ADMINISTRADOR, Role.GERENTE];
 
+/**
+ * Hash argon2 de uma senha aleatória descartada, usado só para gastar o mesmo
+ * tempo de verificação quando o e-mail não existe (ver login). Não destranca
+ * nada — ninguém conhece o texto que o gerou — e o caminho que o usa termina
+ * sempre em 401.
+ */
+const HASH_FALSO =
+  '$argon2id$v=19$m=65536,t=3,p=4$x4OdUWEObkJQuA3skdXwBQ$q18YgRLomELRp1qBHanXfWqOr44AWOv7OuZt+EmmAII';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -35,9 +44,20 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const user = await this.users.findByEmail(dto.email);
-    // Mensagem genérica para não revelar existência do e-mail.
-    if (!user) throw new UnauthorizedException('Credenciais inválidas.');
-    if (!user.ativo) throw new UnauthorizedException('Usuário inativo.');
+
+    if (!user) {
+      // Compara contra um hash descartável antes de recusar. Sem isto, o
+      // e-mail inexistente respondia na hora e o existente só depois do
+      // bcrypt: a diferença de tempo, sozinha, já dizia quais e-mails têm
+      // conta no sistema.
+      await this.hashing.compare(dto.senha, HASH_FALSO);
+      throw new UnauthorizedException('Credenciais inválidas.');
+    }
+
+    // Conta inativa responde igual a credencial errada: dizer "usuário
+    // inativo" confirmava que aquele e-mail existe — a mesma informação que
+    // as outras respostas desta função evitam entregar.
+    if (!user.ativo) throw new UnauthorizedException('Credenciais inválidas.');
 
     // Conta bloqueada responde igual a credencial errada: informar o bloqueio
     // confirmaria que o e-mail existe e ainda entregaria ao atacante o retorno

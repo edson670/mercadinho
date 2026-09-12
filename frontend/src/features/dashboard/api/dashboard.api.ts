@@ -6,10 +6,12 @@ export interface DashboardSummary {
   qtdVendasDia: number;
   vendasMes: number;
   qtdVendasMes: number;
-  totalFaturado: number;
-  fiadoEmAberto: number;
-  totalRecebidoFiado: number;
-  clientesInadimplentes: number;
+  // Ausentes para o perfil CAIXA — o backend só envia a quem pode ver
+  // indicador financeiro (ver DashboardController.summary).
+  totalFaturado?: number;
+  fiadoEmAberto?: number;
+  totalRecebidoFiado?: number;
+  clientesInadimplentes?: number;
   produtosEstoqueBaixo: number;
   ultimasVendas: {
     id: string;

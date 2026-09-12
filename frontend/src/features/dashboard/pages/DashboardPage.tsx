@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { cn, formatCurrency, formatDateTime } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
 import { useSummary } from '../api/use-dashboard';
 import { SalesChart } from '../components/SalesChart';
@@ -21,11 +21,16 @@ export function DashboardPage() {
   const isGestao = user?.role === 'ADMINISTRADOR' || user?.role === 'GERENTE';
   const { data: s } = useSummary();
 
+  // Os indicadores financeiros não chegam para o caixa — o backend os omite.
   const kpis = [
     { label: 'Vendas do dia', value: formatCurrency(s?.vendasDia ?? 0), icon: ShoppingCart, hint: `${s?.qtdVendasDia ?? 0} vendas` },
     { label: 'Vendas do mês', value: formatCurrency(s?.vendasMes ?? 0), icon: TrendingUp, hint: `${s?.qtdVendasMes ?? 0} vendas` },
-    { label: 'Total faturado', value: formatCurrency(s?.totalFaturado ?? 0), icon: DollarSign, hint: 'acumulado' },
-    { label: 'Fiado em aberto', value: formatCurrency(s?.fiadoEmAberto ?? 0), icon: HandCoins, hint: `${s?.clientesInadimplentes ?? 0} clientes` },
+    ...(isGestao
+      ? [
+          { label: 'Total faturado', value: formatCurrency(s?.totalFaturado ?? 0), icon: DollarSign, hint: 'acumulado' },
+          { label: 'Fiado em aberto', value: formatCurrency(s?.fiadoEmAberto ?? 0), icon: HandCoins, hint: `${s?.clientesInadimplentes ?? 0} clientes` },
+        ]
+      : []),
   ];
 
   return (
@@ -54,20 +59,24 @@ export function DashboardPage() {
       </div>
 
       {/* Indicadores secundários */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <MiniStat
-          icon={CheckCircle2}
-          label="Recebido em fiado"
-          value={formatCurrency(s?.totalRecebidoFiado ?? 0)}
-          tone="emerald"
-        />
-        <MiniStat
-          icon={Users}
-          label="Inadimplentes"
-          value={String(s?.clientesInadimplentes ?? 0)}
-          tone="amber"
-          to="/fiado"
-        />
+      <div className={cn('grid gap-4', isGestao ? 'sm:grid-cols-3' : 'sm:grid-cols-1')}>
+        {isGestao && (
+          <>
+            <MiniStat
+              icon={CheckCircle2}
+              label="Recebido em fiado"
+              value={formatCurrency(s?.totalRecebidoFiado ?? 0)}
+              tone="emerald"
+            />
+            <MiniStat
+              icon={Users}
+              label="Inadimplentes"
+              value={String(s?.clientesInadimplentes ?? 0)}
+              tone="amber"
+              to="/fiado"
+            />
+          </>
+        )}
         <MiniStat
           icon={AlertTriangle}
           label="Estoque baixo"

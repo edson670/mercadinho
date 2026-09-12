@@ -2,7 +2,10 @@ import { Controller, Get, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { Roles } from '@core/auth/roles.decorator';
+import { AuthUser, CurrentUser } from '@core/auth/current-user.decorator';
 import { ChartPeriod, DashboardService } from '../application/dashboard.service';
+
+const VE_INDICADORES_FINANCEIROS: Role[] = [Role.ADMINISTRADOR, Role.GERENTE];
 
 @ApiTags('Dashboard')
 @ApiBearerAuth()
@@ -11,9 +14,13 @@ export class DashboardController {
   constructor(private readonly service: DashboardService) {}
 
   @Get('summary')
-  @ApiOperation({ summary: 'Indicadores gerais (dia/mês/fiado/estoque/últimas vendas)' })
-  summary() {
-    return this.service.summary();
+  @ApiOperation({
+    summary: 'Indicadores gerais (dia/mês/estoque/últimas vendas)',
+    description:
+      'Faturamento acumulado, fiado em aberto e inadimplentes só para ADMINISTRADOR/GERENTE.',
+  })
+  summary(@CurrentUser() user: AuthUser) {
+    return this.service.summary(VE_INDICADORES_FINANCEIROS.includes(user.role as Role));
   }
 
   @Get('sales-chart')
