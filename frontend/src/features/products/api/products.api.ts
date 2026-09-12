@@ -88,3 +88,21 @@ export async function setProductStatus(id: string, ativo: boolean): Promise<Prod
   const { data } = await apiClient.patch(`/products/${id}/status`, { ativo });
   return data;
 }
+
+/** Tipos e tamanho aceitos — espelham a validação do backend (PNG/JPEG/WEBP, 2MB). */
+export const IMAGEM_TIPOS_ACEITOS = ['image/png', 'image/jpeg', 'image/webp'];
+export const IMAGEM_TAMANHO_MAX = 2 * 1024 * 1024;
+
+export async function uploadProductImage(id: string, file: File): Promise<Product> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await apiClient.post(`/products/${id}/image`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data;
+}
+
+export async function deleteProductImage(id: string): Promise<Product> {
+  const { data } = await apiClient.delete(`/products/${id}/image`);
+  return data;
+}

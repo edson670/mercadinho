@@ -105,6 +105,21 @@ export class ProductsService {
     return ProductResponseDto.fromEntity(atualizado);
   }
 
+  /**
+   * Grava a URL da imagem e devolve a anterior, para o controller poder
+   * apagar o arquivo antigo depois que o novo já está registrado.
+   */
+  async trocarImagem(
+    id: string,
+    imagemUrl: string | null,
+  ): Promise<{ produto: ProductResponseDto; imagemAnterior: string | null }> {
+    const produto = await this.repo.findById(id);
+    if (!produto) throw new NotFoundError('Produto', id);
+    const imagemAnterior = produto.imagemUrl;
+    const atualizado = await this.repo.update(id, { imagemUrl });
+    return { produto: ProductResponseDto.fromEntity(atualizado), imagemAnterior };
+  }
+
   async setStatus(id: string, ativo: boolean): Promise<ProductResponseDto> {
     const produto = await this.repo.findById(id);
     if (!produto) throw new NotFoundError('Produto', id);

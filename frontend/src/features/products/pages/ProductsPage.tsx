@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Power, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Power, AlertTriangle, ImageOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -25,9 +25,18 @@ export function ProductsPage() {
     {
       header: 'Produto',
       cell: (p) => (
-        <div>
-          <span className="font-medium">{p.nome}</span>
-          {p.codigoBarras && <p className="text-xs text-muted-foreground">{p.codigoBarras}</p>}
+        <div className="flex items-center gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg border bg-raised">
+            {p.imagemUrl ? (
+              <img src={p.imagemUrl} alt={p.nome} className="h-full w-full object-cover" />
+            ) : (
+              <ImageOff className="h-4 w-4 text-muted-foreground/50" />
+            )}
+          </div>
+          <div className="min-w-0">
+            <span className="font-medium">{p.nome}</span>
+            {p.codigoBarras && <p className="text-xs text-muted-foreground">{p.codigoBarras}</p>}
+          </div>
         </div>
       ),
     },
@@ -42,7 +51,10 @@ export function ProductsPage() {
         </span>
       ),
     },
-    { header: 'Unid.', cell: (p) => <span className="text-muted-foreground">{unidadeLabels[p.unidade]}</span> },
+    {
+      header: 'Unid.',
+      cell: (p) => <span className="text-muted-foreground">{unidadeLabels[p.unidade]}</span>,
+    },
     {
       header: 'Status',
       cell: (p) => (
@@ -70,7 +82,9 @@ export function ProductsPage() {
             title={p.ativo ? 'Inativar' : 'Ativar'}
             onClick={() => setStatus.mutate({ id: p.id, ativo: !p.ativo })}
           >
-            <Power className={p.ativo ? 'h-4 w-4 text-emerald-600' : 'h-4 w-4 text-muted-foreground'} />
+            <Power
+              className={p.ativo ? 'h-4 w-4 text-emerald-600' : 'h-4 w-4 text-muted-foreground'}
+            />
           </Button>
         </div>
       ),

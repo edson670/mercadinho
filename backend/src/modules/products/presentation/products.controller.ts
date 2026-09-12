@@ -1,23 +1,28 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { Roles } from '@core/auth/roles.decorator';
+import {
+  OPCOES_UPLOAD_IMAGEM,
+  removerImagem,
+  salvarImagem,
+} from '@core/common/upload/image-upload.util';
 import { ProductsService } from '../application/products.service';
 import { UpdateStatusDto } from '@modules/users/presentation/dto/update-status.dto';
-import {
-  CreateProductDto,
-  ProductQueryDto,
-  UpdateProductDto,
-} from './dto/product.dto';
+import { CreateProductDto, ProductQueryDto, UpdateProductDto } from './dto/product.dto';
 
 @ApiTags('Produtos')
 @ApiBearerAuth()
@@ -72,5 +77,36 @@ export class ProductsController {
   @ApiOperation({ summary: 'Ativa/inativa um produto' })
   setStatus(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateStatusDto) {
     return this.service.setStatus(id, dto.ativo);
+  }
+
+  @Post(':id/image')
+  @Roles(Role.ADMINISTRADOR, Role.GERENTE)
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } },
+  })
+  @ApiOperation({ summary: 'Envia a imagem do produto (exibida no catálogo)' })
+  @UseInterceptors(FileInterceptor('file', OPCOES_UPLOAD_IMAGEM))
+  async uploadImage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    // Grava a nova imagem só depois de validar o produto (dentro do service);
+    // salvarImagem valida magic bytes e gera o nome no servidor.
+    const url = await salvarImagem(file?.buffer, 'produto');
+    const { produto, imagemAnterior } = await this.service.trocarImagem(id, url);
+    // Só apaga a antiga depois que a nova está registrada — falha aqui não
+    // deixa o produto apontando para um arquivo inexistente.
+    await removerImagem(imagemAnterior, 'produto');
+    return produto;
+  }
+
+  @Delete(':id/image')
+  @Roles(Role.ADMINISTRADOR, Role.GERENTE)
+  @ApiOperation({ summary: 'Remove a imagem do produto' })
+  async removeImage(@Param('id', ParseUUIDPipe) id: string) {
+    const { produto, imagemAnterior } = await this.service.trocarImagem(id, null);
+    await removerImagem(imagemAnterior, 'produto');
+    return produto;
   }
 }

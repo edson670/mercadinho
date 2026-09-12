@@ -3,9 +3,11 @@ import { toast } from '@/stores/toast.store';
 import { getApiErrorMessage } from '@/lib/api-client';
 import {
   createProduct,
+  deleteProductImage,
   listProducts,
   setProductStatus,
   updateProduct,
+  uploadProductImage,
   type ProductListParams,
   type ProductPayload,
 } from './products.api';
@@ -31,11 +33,40 @@ export function useCreateProduct() {
 export function useUpdateProduct() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<Omit<ProductPayload, 'estoque'>> }) =>
-      updateProduct(id, payload),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: Partial<Omit<ProductPayload, 'estoque'>>;
+    }) => updateProduct(id, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [KEY] });
       toast.success('Produto atualizado.');
+    },
+    onError: (e) => toast.error(getApiErrorMessage(e)),
+  });
+}
+
+export function useUploadProductImage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: string; file: File }) => uploadProductImage(id, file),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY] });
+      toast.success('Imagem atualizada.');
+    },
+    onError: (e) => toast.error(getApiErrorMessage(e)),
+  });
+}
+
+export function useDeleteProductImage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteProductImage(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY] });
+      toast.success('Imagem removida.');
     },
     onError: (e) => toast.error(getApiErrorMessage(e)),
   });
