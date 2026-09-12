@@ -9,6 +9,8 @@ import {
 import { PrismaService } from '@core/database/prisma.service';
 import { BusinessRuleError, NotFoundError, ValidationError } from '@core/errors/domain.errors';
 import { StockService } from '@modules/stock/application/stock.service';
+import { CatalogSessionService } from '@modules/whatsapp/application/catalog-session.service';
+import { toNationalDigits } from '@modules/whatsapp/domain/phone.util';
 import { CreateOrderDto } from '../presentation/dto/order.dto';
 import { IOrderNotifier, ORDER_NOTIFIER, PedidoComItens } from './order-notifier';
 
@@ -29,10 +31,37 @@ export class CriarPedidoUseCase {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stock: StockService,
+    private readonly sessions: CatalogSessionService,
     @Inject(ORDER_NOTIFIER) private readonly notifier: IOrderNotifier,
   ) {}
 
   async execute(dto: CreateOrderDto): Promise<{ id: string; numero: number; trackingToken: string; total: number }> {
+    // Antes de qualquer coisa: o pedido só vale se vier de um link de WhatsApp
+    // válido. `resolver` recusa código inexistente ou vencido.
+    //
+    // O 401 dele é convertido em erro de validação de propósito: esta rota é
+    // pública e o catálogo usa o mesmo cliente HTTP do admin, cujo interceptor
+    // trata 401 como "sessão do operador caiu" e faz logout. Sem a conversão,
+    // o dono da loja abrir o catálogo com um link vencido derrubaria a própria
+    // sessão do painel.
+    const sessao = await this.sessions.resolver(dto.sessionToken).catch(() => {
+      throw new ValidationError(
+        'Link expirado ou inválido. Envie uma mensagem no WhatsApp para receber um novo.',
+      );
+    });
+
+    // O telefone gravado é o da sessão, não o do formulário: o campo chega
+    // preenchido e bloqueado no catálogo, então divergência aqui significa
+    // payload adulterado — alguém tentando emitir pedido no nome de outro
+    // número. Comparação normalizada porque a sessão guarda o nacional
+    // (DDD+número) e o cliente pode mandar com o 55 na frente.
+    if (toNationalDigits(dto.telefone) !== toNationalDigits(sessao.telefone)) {
+      throw new ValidationError(
+        'O telefone informado não confere com o do link recebido no WhatsApp.',
+      );
+    }
+    const telefone = toNationalDigits(sessao.telefone);
+
     if (dto.idempotencyKey) {
       const existente = await this.prisma.pedido.findUnique({
         where: { idempotencyKey: dto.idempotencyKey },
@@ -80,12 +109,12 @@ export class CriarPedidoUseCase {
       }
 
       // Cliente automático pelo telefone (cadastro sem fricção).
-      let cliente = await tx.cliente.findFirst({ where: { telefone: dto.telefone } });
+      let cliente = await tx.cliente.findFirst({ where: { telefone } });
       if (!cliente) {
         cliente = await tx.cliente.create({
           data: {
             nome: dto.nome,
-            telefone: dto.telefone,
+            telefone,
             endereco: `${dto.logradouro}, ${dto.numeroEndereco} - ${dto.bairro}, ${dto.cidade}`,
           },
         });
@@ -96,7 +125,7 @@ export class CriarPedidoUseCase {
           idempotencyKey: dto.idempotencyKey,
           clienteId: cliente.id,
           nomeCliente: dto.nome,
-          telefone: dto.telefone,
+          telefone,
           logradouro: dto.logradouro,
           numeroEndereco: dto.numeroEndereco,
           complemento: dto.complemento,

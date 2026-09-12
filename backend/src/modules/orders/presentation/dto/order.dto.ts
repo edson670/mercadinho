@@ -104,6 +104,18 @@ export class CreateOrderDto {
   @IsUUID()
   idempotencyKey?: string;
 
+  /**
+   * Código do link enviado por WhatsApp (`/catalogo?s=...`). É o que prova que
+   * do outro lado existe um número de telefone real que conversou com a loja.
+   * Sem ele o endereço público aceitaria pedidos anônimos com telefone e
+   * endereço inventados — e como criar pedido baixa estoque, daria para zerar
+   * o estoque da loja com pedidos que nunca seriam retirados.
+   */
+  @ApiProperty({ description: 'Código da sessão recebida pelo link do WhatsApp' })
+  @IsString()
+  @Matches(/^[A-Za-z0-9]{8}$/, { message: 'sessão inválida' })
+  sessionToken!: string;
+
   @ApiProperty({ type: [OrderItemDto] })
   @IsArray()
   @ArrayMinSize(1)

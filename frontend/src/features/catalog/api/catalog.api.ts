@@ -75,6 +75,8 @@ export interface CreateOrderPayload {
   trocoPara?: number;
   observacoes?: string;
   idempotencyKey: string;
+  /** Código do link do WhatsApp — o backend recusa o pedido sem ele. */
+  sessionToken: string;
   itens: OrderItemInput[];
 }
 

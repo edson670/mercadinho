@@ -4,7 +4,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
-import { ArrowLeft, Banknote, CreditCard, Loader2, QrCode, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, Banknote, CreditCard, Loader2, QrCode, ShoppingBag, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -94,6 +94,7 @@ export function CheckoutPage() {
     mutation.mutate({
       nome: values.nome,
       telefone: values.telefone,
+      sessionToken: session.token ?? '',
       logradouro: values.logradouro,
       numeroEndereco: values.numeroEndereco,
       complemento: values.complemento || undefined,
@@ -128,6 +129,19 @@ export function CheckoutPage() {
       </header>
 
       <form onSubmit={handleSubmit(onSubmit)} className="mx-auto max-w-2xl space-y-6 p-4">
+        {/* O pedido exige a sessão do link do WhatsApp. Avisar aqui em cima
+            evita a pior versão disto: preencher o formulário inteiro e só
+            descobrir no envio. */}
+        {!session.token && (
+          <section className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm text-amber-700 dark:text-amber-400">
+            <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              Para fazer o pedido, use o link que enviamos no WhatsApp. Mande uma mensagem
+              para a loja e você receberá um link novo.
+            </span>
+          </section>
+        )}
+
         <section className="rounded-lg border bg-card p-3 text-sm text-muted-foreground">
           <p className="mb-1 flex items-center gap-1.5 font-medium text-foreground">
             <ShoppingBag className="h-4 w-4" /> Resumo
@@ -145,7 +159,17 @@ export function CheckoutPage() {
           </div>
           <div>
             <Label htmlFor="telefone">Telefone (WhatsApp)</Label>
-            <Input id="telefone" inputMode="numeric" placeholder="11999998888" {...register('telefone')} />
+            {/* Somente leitura quando veio do link: o backend confere este
+                número contra o da sessão, então deixar editável só produziria
+                um erro na hora de enviar. */}
+            <Input
+              id="telefone"
+              inputMode="numeric"
+              placeholder="11999998888"
+              readOnly={Boolean(session.telefone)}
+              className={cn(session.telefone && 'bg-muted text-muted-foreground')}
+              {...register('telefone')}
+            />
             {errors.telefone && <p className="mt-1 text-xs text-destructive">{errors.telefone.message}</p>}
           </div>
         </section>
@@ -229,7 +253,12 @@ export function CheckoutPage() {
         </section>
 
         <div className="fixed inset-x-0 bottom-0 mx-auto max-w-2xl border-t bg-background p-4">
-          <Button type="submit" size="lg" className="w-full" disabled={mutation.isPending}>
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full"
+            disabled={mutation.isPending || !session.token}
+          >
             {mutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (

@@ -26,7 +26,7 @@ export function CatalogPage() {
   useEffect(() => {
     if (!sessionToken) return;
     resolveWhatsAppSession(sessionToken)
-      .then((data) => setSession(data))
+      .then((data) => setSession({ ...data, token: sessionToken }))
       .catch(() => undefined)
       .finally(() => {
         const next = new URLSearchParams(searchParams);

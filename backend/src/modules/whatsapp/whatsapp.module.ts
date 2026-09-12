@@ -27,6 +27,6 @@ import { EvolutionWebhookController } from './presentation/evolution-webhook.con
     CatalogSessionService,
     HandleIncomingMessageUseCase,
   ],
-  exports: [WhatsAppOrderNotifier],
+  exports: [WhatsAppOrderNotifier, CatalogSessionService],
 })
 export class WhatsAppModule {}
