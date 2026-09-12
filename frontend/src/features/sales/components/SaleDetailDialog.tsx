@@ -1,4 +1,4 @@
-import { Loader2, Ban } from 'lucide-react';
+import { Loader2, Ban, Printer } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,7 @@ import {
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
 import { useSale, useCancelSale } from '../api/use-sales';
+import { SaleReceipt, useComprovante } from './SaleReceipt';
 
 interface Props {
   saleId: string | null;
@@ -29,6 +30,7 @@ interface Props {
 export function SaleDetailDialog({ saleId, onOpenChange }: Props) {
   const { data, isLoading } = useSale(saleId);
   const cancelMutation = useCancelSale();
+  const { venda: comprovante, imprimir, carregando: imprimindo } = useComprovante();
   const role = useAuthStore((s) => s.user?.role);
   const canCancel = role === 'ADMINISTRADOR' || role === 'GERENTE';
 
@@ -106,19 +108,38 @@ export function SaleDetailDialog({ saleId, onOpenChange }: Props) {
           </div>
         )}
 
-        {data && data.status === 'CONCLUIDA' && canCancel && (
+        {data && (
           <DialogFooter>
-            <Button variant="destructive" onClick={handleCancel} disabled={cancelMutation.isPending}>
-              {cancelMutation.isPending ? (
+            <Button
+              variant="outline"
+              onClick={() => imprimir(data.id)}
+              disabled={imprimindo}
+            >
+              {imprimindo ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Ban className="h-4 w-4" />
+                <Printer className="h-4 w-4" />
               )}
-              Cancelar venda
+              Reimprimir comprovante
             </Button>
+            {data.status === 'CONCLUIDA' && canCancel && (
+              <Button
+                variant="destructive"
+                onClick={handleCancel}
+                disabled={cancelMutation.isPending}
+              >
+                {cancelMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Ban className="h-4 w-4" />
+                )}
+                Cancelar venda
+              </Button>
+            )}
           </DialogFooter>
         )}
       </DialogContent>
+      {comprovante && <SaleReceipt venda={comprovante} />}
     </Dialog>
   );
 }

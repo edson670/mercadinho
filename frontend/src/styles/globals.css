@@ -60,3 +60,89 @@
     font-feature-settings: 'rlig' 1, 'calt' 1;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────
+   Impressão do comprovante (bobina térmica 80mm)
+
+   Ao imprimir, tudo da aplicação some e sobra só o comprovante: é a
+   forma de usar a impressora do sistema sem driver próprio nem
+   servidor de impressão, e ainda deixa o operador salvar em PDF pelo
+   próprio diálogo do navegador.
+   ────────────────────────────────────────────────────────────── */
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #comprovante-venda,
+  #comprovante-venda * {
+    visibility: visible;
+  }
+
+  #comprovante-venda {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 80mm;
+    /* Preto no branco: bobina térmica não tem tom de cinza confiável. */
+    background: #fff;
+    color: #000;
+  }
+
+  .recibo {
+    width: 72mm;
+    padding: 4mm 4mm 8mm;
+    font-family: ui-monospace, 'Courier New', monospace;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .recibo p {
+    margin: 0;
+  }
+
+  .recibo-centro {
+    text-align: center;
+  }
+
+  .recibo-titulo {
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .recibo-detalhe {
+    font-size: 10px;
+  }
+
+  .recibo-separador {
+    border-top: 1px dashed #000;
+    margin: 2mm 0;
+  }
+
+  .recibo-itens,
+  .recibo-totais {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .recibo-itens td {
+    padding: 0 0 1.5mm;
+    vertical-align: top;
+  }
+
+  .recibo-valor {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .recibo-total td {
+    padding-top: 1mm;
+    font-size: 13px;
+    font-weight: 700;
+  }
+}

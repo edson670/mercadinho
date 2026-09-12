@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   MessageCircle,
   CircleCheck,
+  Printer,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ProductGrid } from '../components/ProductGrid';
+import { SaleReceipt, useComprovante } from '../components/SaleReceipt';
 import { CustomerSearchSelect } from '@/features/customers/components/CustomerSearchSelect';
 import { useCurrentCash } from '@/features/cash-register/api/use-cash-register';
 import { useActiveOrdersCount } from '@/features/orders/api/use-orders';
@@ -53,12 +55,21 @@ const ATALHO_PAGAMENTO: Record<string, FormaPagamento> = {
 export function PdvPage() {
   const navigate = useNavigate();
   const { items, setQty, removeItem, desconto, setDesconto, clear, subtotal, total } = usePdvCart();
-  const { data: caixa } = useCurrentCash();
+  // `isPending` importa: enquanto a consulta não responde, `caixa` é
+  // undefined e o alerta de "nenhum caixa aberto" aparecia por um instante
+  // mesmo com o caixa aberto — o operador via um aviso falso a cada carga da
+  // tela e, se clicasse em "Abrir caixa", tomava "você já possui um caixa".
+  const { data: caixa, isPending: caixaCarregando } = useCurrentCash();
   const { data: pedidosNovos } = useActiveOrdersCount();
   const createSale = useCreateSale();
 
   const [pagamento, setPagamento] = useState<FormaPagamento>('DINHEIRO');
   const [cliente, setCliente] = useState<Customer | null>(null);
+  const { venda: comprovante, imprimir } = useComprovante();
+  // Preferência do balcão: nem toda loja entrega cupom em toda venda.
+  const [imprimirAoFinalizar, setImprimirAoFinalizar] = useState(
+    () => localStorage.getItem('mercado-pdv-imprimir') !== 'nao',
+  );
 
   const sub = subtotal();
   const tot = total();
@@ -78,6 +89,12 @@ export function PdvPage() {
       clear();
       setCliente(null);
       setPagamento('DINHEIRO');
+      // A venda já está gravada: uma falha ao imprimir não pode desfazê-la
+      // nem travar o próximo atendimento — no pior caso o operador
+      // reimprime pelo histórico.
+      if (imprimirAoFinalizar) {
+        imprimir(result.id).catch(() => toast.error('Não foi possível abrir a impressão.'));
+      }
     }
   };
 
@@ -141,7 +158,7 @@ export function PdvPage() {
         </div>
       )}
 
-      {!caixa && (
+      {!caixa && !caixaCarregando && (
         <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
           <AlertTriangle className="h-4 w-4" />
           Nenhum caixa aberto. Abra o caixa antes de finalizar vendas.
@@ -314,6 +331,20 @@ export function PdvPage() {
                   Enter
                 </kbd>
               </Button>
+              <label className="flex cursor-pointer items-center justify-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  className="h-3.5 w-3.5 accent-primary"
+                  checked={imprimirAoFinalizar}
+                  onChange={(e) => {
+                    setImprimirAoFinalizar(e.target.checked);
+                    localStorage.setItem('mercado-pdv-imprimir', e.target.checked ? 'sim' : 'nao');
+                  }}
+                />
+                <Printer className="h-3.5 w-3.5" />
+                Imprimir comprovante ao finalizar
+              </label>
+
               {items.length > 0 && (
                 <Button variant="ghost" className="w-full" onClick={clear}>
                   Limpar
@@ -323,6 +354,8 @@ export function PdvPage() {
           </Card>
         </div>
       </div>
+
+      {comprovante && <SaleReceipt venda={comprovante} />}
     </div>
   );
 }
